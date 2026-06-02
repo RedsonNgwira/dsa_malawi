@@ -4,7 +4,15 @@ import 'package:url_launcher/url_launcher.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  void _open(String url) async {
+  void _open(String url, {String? appUrl}) async {
+    // Try native app URI first, fall back to browser
+    if (appUrl != null) {
+      final appUri = Uri.parse(appUrl);
+      if (await canLaunchUrl(appUri)) {
+        launchUrl(appUri, mode: LaunchMode.externalNonBrowserApplication);
+        return;
+      }
+    }
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
   }
@@ -54,14 +62,20 @@ class AboutScreen extends StatelessWidget {
             color: const Color(0xFF1DA1F2),
             title: 'Twitter / X',
             subtitle: '@RedsonNgwira',
-            onTap: () => _open('https://twitter.com/RedsonNgwira'),
+            onTap: () => _open(
+              'https://twitter.com/RedsonNgwira',
+              appUrl: 'twitter://user?screen_name=RedsonNgwira',
+            ),
           ),
           _LinkTile(
             icon: Icons.facebook,
             color: const Color(0xFF1877F2),
             title: 'Facebook Page',
             subtitle: 'Redson Ngwira',
-            onTap: () => _open('https://web.facebook.com/profile.php?id=61583687080759'),
+            onTap: () => _open(
+              'https://web.facebook.com/profile.php?id=61583687080759',
+              appUrl: 'fb://profile/61583687080759',
+            ),
           ),
 
           const SizedBox(height: 24),

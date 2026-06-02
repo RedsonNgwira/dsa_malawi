@@ -21,14 +21,10 @@ class AboutScreen extends StatelessWidget {
           Center(
             child: Column(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset('assets/icon.png', width: 90, height: 90,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 90, height: 90,
-                        decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(20)),
-                        child: const Icon(Icons.document_scanner, color: Colors.white, size: 48),
-                      )),
+                Container(
+                  width: 90, height: 90,
+                  decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(20)),
+                  child: const Icon(Icons.document_scanner, color: Colors.white, size: 48),
                 ),
                 const SizedBox(height: 12),
                 Text('DSA Malawi', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),

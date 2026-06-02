@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
+import 'screens/documents_screen.dart';
 import 'screens/about_screen.dart';
 
 void main() {
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _screens = const [
     ScannerScreen(),
     LoanCalcScreen(),
+    DocumentsScreen(),
     AboutScreen(),
   ];
 
@@ -62,6 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.calculate_outlined),
             selectedIcon: Icon(Icons.calculate),
             label: 'Loan Calc',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.folder_outlined),
+            selectedIcon: Icon(Icons.folder),
+            label: 'Documents',
           ),
           NavigationDestination(
             icon: Icon(Icons.info_outline),

@@ -86,7 +86,7 @@ class AboutScreen extends StatelessWidget {
                   const Text('This app is free. If it saves you time, a small Airtel/TNM donation keeps it going.'),
                   const SizedBox(height: 12),
                   _DonateRow('Airtel Money', '0991 234 567'), // replace with real number
-                  _DonateRow('TNM Mpamba',   '0881 234 567'), // replace with real number
+                  _DonateRow('TNM Mpamba',   '0896 022 284'),
                 ],
               ),
             ),

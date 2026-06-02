@@ -1,0 +1,38 @@
+name: dsa_malawi
+description: DSA Malawi - Direct Sales Agent Tool
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Camera & image
+  camera: ^0.11.0+2
+  image: ^4.3.0
+  # PDF export
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  # Word (.docx) export
+  docx_template: ^0.3.4
+  # File system & sharing
+  path_provider: ^2.1.4
+  share_plus: ^10.1.2
+  # Permissions
+  permission_handler: ^11.3.1
+  # UI
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  flutter_slidable: ^3.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/

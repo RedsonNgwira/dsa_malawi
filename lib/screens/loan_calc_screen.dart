@@ -132,7 +132,12 @@ class _LoanCalcScreenState extends State<LoanCalcScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _ResultRow('Annual Interest Rate', '${(result.annualRate * 100).toStringAsFixed(1)}%', bold: true),
+                    _ResultRow(
+                    'Annual Interest Rate',
+                    '${(result.annualRate * 100).toStringAsFixed(1)}%',
+                    bold: true,
+                    tooltip: '≤36m: 47.5%  |  42–52m: 46.5%  |  60m: 42.5%\nPlatinum 60m: 38%',
+                  ),
                     _ResultRow('Admin Fee', _mwk(result.adminFee)),
                     _ResultRow('Total Loan (incl. fee)', _mwk(result.totalLoan)),
                     const Divider(),
@@ -191,8 +196,9 @@ class _ResultRow extends StatelessWidget {
   final String value;
   final bool bold;
   final bool highlight;
+  final String? tooltip;
 
-  const _ResultRow(this.label, this.value, {this.bold = false, this.highlight = false});
+  const _ResultRow(this.label, this.value, {this.bold = false, this.highlight = false, this.tooltip});
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +212,19 @@ class _ResultRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
+          Row(
+            children: [
+              Text(label, style: style),
+              if (tooltip != null) ...[
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: tooltip!,
+                  triggerMode: TooltipTriggerMode.tap,
+                  child: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                ),
+              ],
+            ],
+          ),
           Text(value, style: style),
         ],
       ),

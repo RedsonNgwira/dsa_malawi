@@ -65,7 +65,7 @@ class AboutScreen extends StatelessWidget {
             color: const Color(0xFF1877F2),
             title: 'Facebook Page',
             subtitle: 'Redson Ngwira',
-            onTap: () => _open('https://facebook.com/RedsonNgwira'),
+            onTap: () => _open('https://web.facebook.com/profile.php?id=61583687080759'),
           ),
 
           const SizedBox(height: 24),

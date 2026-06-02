@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
+import 'screens/about_screen.dart';
 
 void main() {
   runApp(const DSAApp());
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _screens = const [
     ScannerScreen(),
     LoanCalcScreen(),
+    AboutScreen(),
   ];
 
   @override
@@ -60,6 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.calculate_outlined),
             selectedIcon: Icon(Icons.calculate),
             label: 'Loan Calc',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.info_outline),
+            selectedIcon: Icon(Icons.info),
+            label: 'About',
           ),
         ],
       ),

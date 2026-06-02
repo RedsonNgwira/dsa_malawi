@@ -20,6 +20,8 @@ dependencies:
   # File system & sharing
   path_provider: ^2.1.4
   share_plus: ^10.1.2
+  # URL launching
+  url_launcher: ^6.3.1
   # Permissions
   permission_handler: ^11.3.1
   # UI

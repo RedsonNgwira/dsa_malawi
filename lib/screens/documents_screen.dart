@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'file_viewer_screen.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -114,6 +115,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               itemBuilder: (_, i) => _FileCard(
                 file: _files[i],
                 size: _size(_files[i]),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => FileViewerScreen(file: _files[i]),
+                )),
                 onShare: () => _share(_files[i]),
                 onWhatsApp: () => _shareViaWhatsApp(_files[i]),
                 onEmail: () => _shareViaEmail(_files[i]),
@@ -127,11 +131,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 class _FileCard extends StatelessWidget {
   final File file;
   final String size;
-  final VoidCallback onShare, onWhatsApp, onEmail, onDelete;
+  final VoidCallback onTap, onShare, onWhatsApp, onEmail, onDelete;
 
   const _FileCard({
     required this.file,
     required this.size,
+    required this.onTap,
     required this.onShare,
     required this.onWhatsApp,
     required this.onEmail,
@@ -147,9 +152,12 @@ class _FileCard extends StatelessWidget {
     final dateStr = '${modified.day}/${modified.month}/${modified.year}  ${modified.hour}:${modified.minute.toString().padLeft(2, '0')}';
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -180,7 +188,7 @@ class _FileCard extends StatelessWidget {
             Row(
               children: [
                 _ActionBtn(
-                  icon: Icons.whatshot, // WhatsApp green
+                  icon: Icons.whatshot,
                   label: 'WhatsApp',
                   color: const Color(0xFF25D366),
                   onTap: onWhatsApp,
@@ -203,6 +211,7 @@ class _FileCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

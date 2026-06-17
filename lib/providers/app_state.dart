@@ -22,12 +22,19 @@ class AppState extends ChangeNotifier {
   List<Map<String, dynamic>> _exportHistory = [];
   List<Map<String, dynamic>> get exportHistory => _exportHistory;
 
+  // ── Email templates & contacts ──
+  List<Map<String, dynamic>> _emailTemplates = [];
+  List<Map<String, dynamic>> get emailTemplates => _emailTemplates;
+
+  List<Map<String, dynamic>> _savedContacts = [];
+  List<Map<String, dynamic>> get savedContacts => _savedContacts;
+
   // ── Document list ──
   List<Map<String, dynamic>> _documents = [];
   List<Map<String, dynamic>> get documents => _documents;
   String _searchQuery = '';
   String get searchQuery => _searchQuery;
-  String _sortBy = 'date'; // 'date', 'name', 'size'
+  String _sortBy = 'date';
   String get sortBy => _sortBy;
 
   // ── Loading state ──
@@ -38,31 +45,40 @@ class AppState extends ChangeNotifier {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // Load settings
-    final ratesStr = await DatabaseService.getSetting('interest_rates');
-    if (ratesStr != null) {
-      _interestRates = Map<String, dynamic>.from(jsonDecode(ratesStr));
-    }
-
-    final feesStr = await DatabaseService.getSetting('fee_rates');
-    if (feesStr != null) {
-      _feeRates = Map<String, dynamic>.from(jsonDecode(feesStr));
-    }
-
-    final themeStr = await DatabaseService.getSetting('theme_mode');
-    if (themeStr != null) {
-      _themeMode = _themeFromString(themeStr);
-    }
-
-    // Load saved data
-    _savedLoans = await DatabaseService.getSavedLoans();
-    _exportHistory = await DatabaseService.getExportHistory();
+    await _loadSettings();
+    await _loadSavedData();
+    await _loadTemplatesAndContacts();
 
     _initialized = true;
     notifyListeners();
   }
 
-  // ── Theme methods ──
+  Future<void> _loadSettings() async {
+    final ratesStr = await DatabaseService.getSetting('interest_rates');
+    if (ratesStr != null) {
+      _interestRates = Map<String, dynamic>.from(jsonDecode(ratesStr));
+    }
+    final feesStr = await DatabaseService.getSetting('fee_rates');
+    if (feesStr != null) {
+      _feeRates = Map<String, dynamic>.from(jsonDecode(feesStr));
+    }
+    final themeStr = await DatabaseService.getSetting('theme_mode');
+    if (themeStr != null) {
+      _themeMode = _themeFromString(themeStr);
+    }
+  }
+
+  Future<void> _loadSavedData() async {
+    _savedLoans = await DatabaseService.getSavedLoans();
+    _exportHistory = await DatabaseService.getExportHistory();
+  }
+
+  Future<void> _loadTemplatesAndContacts() async {
+    _emailTemplates = await DatabaseService.getTemplates();
+    _savedContacts = await DatabaseService.getContacts();
+  }
+
+  // ── Theme ──
 
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
@@ -70,7 +86,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Interest rates methods ──
+  // ── Interest rates ──
 
   void updateInterestRates(Map<String, dynamic> rates) {
     _interestRates = Map<String, dynamic>.from(rates);
@@ -114,6 +130,46 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Email Templates ──
+
+  Future<void> addTemplate(Map<String, dynamic> template) async {
+    await DatabaseService.saveTemplate(template);
+    _emailTemplates = await DatabaseService.getTemplates();
+    notifyListeners();
+  }
+
+  Future<void> updateTemplate(int id, Map<String, dynamic> template) async {
+    await DatabaseService.updateTemplate(id, template);
+    _emailTemplates = await DatabaseService.getTemplates();
+    notifyListeners();
+  }
+
+  Future<void> removeTemplate(int id) async {
+    await DatabaseService.deleteTemplate(id);
+    _emailTemplates = await DatabaseService.getTemplates();
+    notifyListeners();
+  }
+
+  // ── Saved Contacts ──
+
+  Future<void> addContact(Map<String, dynamic> contact) async {
+    await DatabaseService.saveContact(contact);
+    _savedContacts = await DatabaseService.getContacts();
+    notifyListeners();
+  }
+
+  Future<void> updateContact(int id, Map<String, dynamic> contact) async {
+    await DatabaseService.updateContact(id, contact);
+    _savedContacts = await DatabaseService.getContacts();
+    notifyListeners();
+  }
+
+  Future<void> removeContact(int id) async {
+    await DatabaseService.deleteContact(id);
+    _savedContacts = await DatabaseService.getContacts();
+    notifyListeners();
+  }
+
   // ── Document list management ──
 
   void updateDocuments(List<Map<String, dynamic>> docs) {
@@ -135,23 +191,17 @@ class AppState extends ChangeNotifier {
 
   static ThemeMode _themeFromString(String s) {
     switch (s) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
+      case 'light': return ThemeMode.light;
+      case 'dark': return ThemeMode.dark;
+      default: return ThemeMode.system;
     }
   }
 
   static String _themeToString(ThemeMode mode) {
     switch (mode) {
-      case ThemeMode.light:
-        return 'light';
-      case ThemeMode.dark:
-        return 'dark';
-      default:
-        return 'system';
+      case ThemeMode.light: return 'light';
+      case ThemeMode.dark: return 'dark';
+      default: return 'system';
     }
   }
 }

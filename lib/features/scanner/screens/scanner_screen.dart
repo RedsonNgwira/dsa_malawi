@@ -27,6 +27,9 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
   bool _showCamera = false;
   int? _recaptureIndex;
   bool _isProcessing = false;
+  List<Offset>? _detectedCorners;
+  int _frameCount = 0;
+  bool _isDetecting = false;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -60,7 +63,64 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
     if (cameras.isEmpty) return;
     _controller = CameraController(cameras.first, ResolutionPreset.high);
     await _controller!.initialize();
-    if (mounted) setState(() => _cameraReady = true);
+    if (mounted) {
+      setState(() => _cameraReady = true);
+      _controller!.startImageStream(_onImageStream);
+    }
+  }
+
+  void _onImageStream(CameraImage image) {
+    _frameCount++;
+    if (_frameCount % 10 != 0 || _isDetecting) return;
+    _isDetecting = true;
+    _detectEdges(image);
+  }
+
+  void _detectEdges(CameraImage image) {
+    try {
+      final yPlane = image.planes[0].bytes;
+      final srcW = image.width;
+      final srcH = image.height;
+      const tw = 40, th = 56;
+      final xStep = srcW ~/ tw;
+      final yStep = srcH ~/ th;
+
+      // Simple edge detection on downsampled Y plane
+      var edgeCount = 0;
+      int minX = tw, minY = th, maxX = 0, maxY = 0;
+
+      for (int y = 2; y < th - 2; y++) {
+        for (int x = 2; x < tw - 2; x++) {
+          final sx = (x * xStep + xStep ~/ 2).clamp(xStep, srcW - xStep - 1);
+          final sy = (y * yStep + yStep ~/ 2).clamp(yStep, srcH - yStep - 1);
+          final gx = (yPlane[sy * srcW + (sx + xStep)] - yPlane[sy * srcW + (sx - xStep)]).abs();
+          final gy = (yPlane[(sy + yStep) * srcW + sx] - yPlane[(sy - yStep) * srcW + sx]).abs();
+          if (gx + gy > 30) {
+            edgeCount++;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      final ratio = edgeCount / (tw * th);
+      if (ratio > 0.01 && ratio < 0.5 && maxX > minX && maxY > minY) {
+        final scaleX = srcW / tw;
+        final scaleY = srcH / th;
+        final newCorners = [
+          Offset(minX * scaleX, minY * scaleY),
+          Offset(maxX * scaleX, minY * scaleY),
+          Offset(maxX * scaleX, maxY * scaleY),
+          Offset(minX * scaleX, maxY * scaleY),
+        ];
+        if (mounted) setState(() => _detectedCorners = newCorners);
+      } else if (mounted) {
+        setState(() => _detectedCorners = null);
+      }
+    } catch (_) {}
+    _isDetecting = false;
   }
 
   Future<void> _openCamera({int? recaptureIndex}) async {
@@ -321,10 +381,34 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
             CameraPreview(_controller!)
           else
             const Center(child: CircularProgressIndicator(color: Colors.white)),
+
+          // Live document edge detection overlay
+          if (_detectedCorners != null)
+            CustomPaint(
+              painter: _LiveDocumentBorder(corners: _detectedCorners!),
+              size: Size.infinite,
+            ),
+
           // Corner guides
           Positioned.fill(
-            child: CustomPaint(painter: _CornerPainter(color: Colors.white38)),
+            child: CustomPaint(painter: _CornerPainter(color: Colors.white24)),
           ),
+
+          // Detection indicator
+          if (_detectedCorners != null)
+            Positioned(
+              top: 16, left: 0, right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amberAccent.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('📄 Document detected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -491,4 +575,38 @@ class _CornerPainter extends CustomPainter {
   }
   @override
   bool shouldRepaint(_) => false;
+}
+
+/// Painter for live document edge detection border
+class _LiveDocumentBorder extends CustomPainter {
+  final List<Offset> corners;
+  _LiveDocumentBorder({required this.corners});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (corners.length < 4) return;
+    final paint = Paint()
+      ..color = Colors.amberAccent
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(corners[0].dx, corners[0].dy)
+      ..lineTo(corners[1].dx, corners[1].dy)
+      ..lineTo(corners[2].dx, corners[2].dy)
+      ..lineTo(corners[3].dx, corners[3].dy)
+      ..close();
+    canvas.drawPath(path, paint);
+    // Corner dots
+    final dot = Paint()..color = Colors.amberAccent..style = PaintingStyle.fill;
+    for (final c in corners) { canvas.drawCircle(c, 5, dot); }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiveDocumentBorder old) {
+    if (old.corners.length != corners.length) return true;
+    for (int i = 0; i < corners.length; i++) {
+      if (old.corners[i] != corners[i]) return true;
+    }
+    return false;
+  }
 }

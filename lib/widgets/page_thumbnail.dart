@@ -6,6 +6,8 @@ class PageThumbnail extends StatelessWidget {
   final int pageNumber;
   final VoidCallback onRecapture;
   final VoidCallback onDelete;
+  final VoidCallback? onFilter;
+  final String? filterLabel;
 
   const PageThumbnail({
     super.key,
@@ -13,6 +15,8 @@ class PageThumbnail extends StatelessWidget {
     required this.pageNumber,
     required this.onRecapture,
     required this.onDelete,
+    this.onFilter,
+    this.filterLabel,
   });
 
   @override
@@ -28,6 +32,12 @@ class PageThumbnail extends StatelessWidget {
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
+              errorBuilder: (_, __, ___) => Container(
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                ),
+              ),
             ),
           ),
           // Page number badge
@@ -45,6 +55,29 @@ class PageThumbnail extends StatelessWidget {
               ),
             ),
           ),
+          // Filter label badge
+          if (filterLabel != null)
+            Positioned(
+              bottom: 6, left: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_fix_high, size: 10, color: Colors.green.shade300),
+                    const SizedBox(width: 3),
+                    Text(
+                      filterLabel!,
+                      style: TextStyle(color: Colors.green.shade200, fontSize: 9),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Action button
           Positioned(
             top: 4, right: 4,
@@ -71,6 +104,12 @@ class PageThumbnail extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onFilter != null)
+              ListTile(
+                leading: const Icon(Icons.auto_fix_high),
+                title: Text('Filter page $pageNumber'),
+                onTap: () { Navigator.pop(context); onFilter!(); },
+              ),
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: Text('Recapture page $pageNumber'),

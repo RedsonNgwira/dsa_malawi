@@ -2,7 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
 import 'file_viewer_screen.dart';
+import 'email_composer_screen.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -13,11 +16,19 @@ class DocumentsScreen extends StatefulWidget {
 
 class _DocumentsScreenState extends State<DocumentsScreen> {
   List<File> _files = [];
+  final _searchCtrl = TextEditingController();
+  bool _showSearch = false;
 
   @override
   void initState() {
     super.initState();
     _loadFiles();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFiles() async {
@@ -37,7 +48,49 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
 
     found.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    if (!mounted) return;
     setState(() => _files = found);
+
+    // Update provider
+    final appState = context.read<AppState>();
+    appState.updateDocuments(found.map((f) => {
+      'name': f.uri.pathSegments.last,
+      'path': f.path,
+      'size': f.lengthSync(),
+      'modified': f.statSync().modified.toIso8601String(),
+      'type': f.path.endsWith('.pdf') ? 'PDF' : 'DOCX',
+    }).toList());
+  }
+
+  List<File> _filteredFiles() {
+    final appState = context.read<AppState>();
+    final query = appState.searchQuery.toLowerCase();
+    final sortBy = appState.sortBy;
+
+    var result = List<File>.from(_files);
+
+    // Search filter
+    if (query.isNotEmpty) {
+      result = result.where((f) =>
+        f.uri.pathSegments.last.toLowerCase().contains(query),
+      ).toList();
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'name':
+        result.sort((a, b) => a.uri.pathSegments.last.compareTo(b.uri.pathSegments.last));
+        break;
+      case 'size':
+        result.sort((a, b) => b.lengthSync().compareTo(a.lengthSync()));
+        break;
+      case 'date':
+      default:
+        result.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+        break;
+    }
+
+    return result;
   }
 
   Future<void> _share(File file) async {
@@ -52,11 +105,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Future<void> _shareViaEmail(File file) async {
-    final name = file.uri.pathSegments.last;
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      subject: name,
-      text: 'Please find the attached document: $name',
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => EmailComposerScreen(file: file)),
     );
   }
 
@@ -87,43 +138,124 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final filtered = _filteredFiles();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Documents'),
+        title: _showSearch
+            ? TextField(
+                controller: _searchCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search documents...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (v) => appState.setSearchQuery(v),
+              )
+            : const Text('Documents'),
         actions: [
+          IconButton(
+            icon: Icon(_showSearch ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _searchCtrl.clear();
+                  appState.setSearchQuery('');
+                }
+              });
+            },
+          ),
+          // Sort button
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'Sort by',
+            onSelected: (v) => appState.setSortBy(v),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'date',
+                child: Row(
+                  children: [
+                    if (appState.sortBy == 'date') const Icon(Icons.check, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Date modified'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'name',
+                child: Row(
+                  children: [
+                    if (appState.sortBy == 'name') const Icon(Icons.check, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Name'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'size',
+                child: Row(
+                  children: [
+                    if (appState.sortBy == 'size') const Icon(Icons.check, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('File size'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadFiles),
         ],
       ),
       body: _files.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.folder_open, size: 72, color: Colors.grey.shade300),
-                  const SizedBox(height: 12),
-                  Text('No documents yet', style: TextStyle(color: Colors.grey.shade500)),
-                  const SizedBox(height: 4),
-                  Text('Exported PDFs and Word files appear here',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: _files.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _FileCard(
-                file: _files[i],
-                size: _size(_files[i]),
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => FileViewerScreen(file: _files[i]),
-                )),
-                onShare: () => _share(_files[i]),
-                onWhatsApp: () => _shareViaWhatsApp(_files[i]),
-                onEmail: () => _shareViaEmail(_files[i]),
-                onDelete: () => _delete(_files[i]),
-              ),
-            ),
+          ? _buildEmptyState()
+          : filtered.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.search_off, size: 72, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text('No matches found', style: TextStyle(color: Colors.grey.shade500)),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadFiles,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _FileCard(
+                      file: filtered[i],
+                      size: _size(filtered[i]),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => FileViewerScreen(file: filtered[i]),
+                      )),
+                      onShare: () => _share(filtered[i]),
+                      onWhatsApp: () => _shareViaWhatsApp(filtered[i]),
+                      onEmail: () => _shareViaEmail(filtered[i]),
+                      onDelete: () => _delete(filtered[i]),
+                    ),
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.folder_open, size: 72, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Text('No documents yet', style: TextStyle(color: Colors.grey.shade500)),
+          const SizedBox(height: 4),
+          Text('Exported PDFs and Word files appear here',
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+        ],
+      ),
     );
   }
 }
@@ -158,60 +290,60 @@ class _FileCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  _isPdf ? Icons.picture_as_pdf : Icons.description,
-                  color: _isPdf ? Colors.red : const Color(0xFF2B579A),
-                  size: 32,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-                      Text('$size  •  $dateStr', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                    ],
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _isPdf ? Icons.picture_as_pdf : Icons.description,
+                    color: _isPdf ? Colors.red : const Color(0xFF2B579A),
+                    size: 32,
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: onDelete,
-                  tooltip: 'Delete',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _ActionBtn(
-                  icon: Icons.whatshot,
-                  label: 'WhatsApp',
-                  color: const Color(0xFF25D366),
-                  onTap: onWhatsApp,
-                ),
-                const SizedBox(width: 8),
-                _ActionBtn(
-                  icon: Icons.email_outlined,
-                  label: 'Email',
-                  color: Colors.orange,
-                  onTap: onEmail,
-                ),
-                const SizedBox(width: 8),
-                _ActionBtn(
-                  icon: Icons.share,
-                  label: 'Share',
-                  color: Colors.blueGrey,
-                  onTap: onShare,
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                        Text('$size  •  $dateStr', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: onDelete,
+                    tooltip: 'Delete',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _ActionBtn(
+                    icon: Icons.whatshot,
+                    label: 'WhatsApp',
+                    color: const Color(0xFF25D366),
+                    onTap: onWhatsApp,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionBtn(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    color: Colors.orange,
+                    onTap: onEmail,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionBtn(
+                    icon: Icons.share,
+                    label: 'Share',
+                    color: Colors.blueGrey,
+                    onTap: onShare,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/app_state.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   void _open(String url, {String? appUrl}) async {
-    // Try native app URI first, fall back to browser
     if (appUrl != null) {
       final appUri = Uri.parse(appUrl);
       if (await canLaunchUrl(appUri)) {
@@ -20,6 +21,8 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final appState = context.watch<AppState>();
+
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
       body: ListView(
@@ -37,7 +40,7 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text('DSA Malawi', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('Version 1.0.0', style: TextStyle(color: Colors.grey.shade500)),
+                Text('Version 1.1.0', style: TextStyle(color: Colors.grey.shade500)),
                 const SizedBox(height: 8),
                 Text(
                   'A free tool built for Direct Sales Agents in Malawi.\nScan documents, calculate loans — no stationery shop needed.',
@@ -48,7 +51,33 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          // ── Theme selector ──
+          _SectionLabel('Appearance'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.palette_outlined),
+                  const SizedBox(width: 12),
+                  const Text('Theme'),
+                  const Spacer(),
+                  SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto), label: Text('Auto')),
+                      ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode), label: Text('Light')),
+                      ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode), label: Text('Dark')),
+                    ],
+                    selected: {appState.themeMode},
+                    onSelectionChanged: (v) => appState.setThemeMode(v.first),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
           _SectionLabel('Developer'),
           _LinkTile(
             icon: Icons.code,
@@ -95,8 +124,8 @@ class AboutScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text('This app is free. If it saves you time, a small Airtel/TNM donation keeps it going.'),
                   const SizedBox(height: 12),
-                  _DonateRow('Airtel Money', '0991 234 567'), // replace with real number
-                  _DonateRow('TNM Mpamba',   '0896 022 284'),
+                  _DonateRow('Airtel Money', '0991 234 567'),
+                  _DonateRow('TNM Mpamba', '0896 022 284'),
                 ],
               ),
             ),

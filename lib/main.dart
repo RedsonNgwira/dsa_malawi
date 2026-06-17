@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'providers/app_state.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
 import 'screens/about_screen.dart';
 
 void main() {
-  runApp(const DSAApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppState()..initialize(),
+      child: const DSAApp(),
+    ),
+  );
 }
 
 class DSAApp extends StatelessWidget {
@@ -14,15 +22,29 @@ class DSAApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
+    // Seed color
+    const seedColor = Color(0xFF1A6B3C); // Malawi green
+
     return MaterialApp(
       title: 'DSA Malawi',
       debugShowCheckedModeBanner: false,
+      themeMode: appState.initialized ? appState.themeMode : ThemeMode.system,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A6B3C), // Malawi green
+          seedColor: seedColor,
           brightness: Brightness.light,
         ),
         textTheme: GoogleFonts.interTextTheme(),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: Brightness.dark,
+        ),
+        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
         useMaterial3: true,
       ),
       home: const HomeScreen(),

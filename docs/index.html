@@ -6,69 +6,38 @@
   <title>DSA Malawi - Download</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
   <style>
-    :root {
-      --green: #1A6B3C;
-      --green-dark: #14522E;
-      --green-light: #E8F5E9;
-      --bg: #F5F7F6;
-      --card: #FFFFFF;
-      --text: #1A1A1A;
-      --text-light: #666;
-      --radius: 16px;
-    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: #f5f7f6;
+      color: #1a1a1a;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .container {
-      max-width: 480px;
-      width: 100%;
-      padding: 24px;
-    }
+    .container { max-width: 480px; width: 100%; padding: 24px; }
     .card {
-      background: var(--card);
-      border-radius: var(--radius);
+      background: #fff;
+      border-radius: 16px;
       padding: 32px 24px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
       text-align: center;
     }
-    .icon {
-      font-size: 56px;
-      margin-bottom: 8px;
-    }
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      color: var(--text-light);
-      font-size: 14px;
-      margin-bottom: 24px;
-    }
-    .device-info {
-      background: var(--green-light);
+    .icon { font-size: 48px; margin-bottom: 8px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+    .info-box {
+      background: #e8f5e9;
       border-radius: 10px;
       padding: 14px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       font-size: 13px;
-      color: var(--green-dark);
+      color: #14522e;
     }
-    .device-info strong {
-      display: block;
-      margin-bottom: 4px;
-    }
+    .info-box strong { display: block; margin-bottom: 4px; }
     .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
+      display: block;
       width: 100%;
       padding: 16px 24px;
       border: none;
@@ -78,91 +47,28 @@
       cursor: pointer;
       text-decoration: none;
       transition: transform 0.15s, box-shadow 0.15s;
+      margin-bottom: 8px;
     }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
-    .btn:active { transform: translateY(0); }
-    .btn-primary {
-      background: var(--green);
-      color: white;
-      margin-bottom: 16px;
-    }
-    .btn-secondary {
-      background: var(--card);
-      color: var(--text);
-      border: 1.5px solid #ddd;
-      font-size: 14px;
-      padding: 12px 20px;
-    }
-    .size-note {
-      font-size: 12px;
-      color: var(--text-light);
-      margin-top: 8px;
-    }
-    .other-downloads {
-      margin-top: 24px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-    }
-    .other-downloads summary {
-      cursor: pointer;
-      font-size: 13px;
-      color: var(--text-light);
-      font-weight: 500;
-    }
-    .other-list {
-      margin-top: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .other-list a {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      background: #f8f8f8;
-      border-radius: 8px;
-      text-decoration: none;
-      color: var(--text);
-      font-size: 13px;
-      transition: background 0.15s;
-    }
-    .other-list a:hover { background: #eee; }
-    .abi-name { font-weight: 600; }
-    .abi-tag {
-      font-size: 10px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: var(--green-light);
-      color: var(--green-dark);
-    }
-    .footer {
-      margin-top: 16px;
-      font-size: 12px;
-      color: var(--text-light);
-      text-align: center;
-    }
+    .btn-primary { background: #1A6B3C; color: white; }
+    .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; font-size: 14px; padding: 12px 20px; }
+    .size-note { font-size: 12px; color: #888; margin-bottom: 16px; }
+    .section-title { font-size: 13px; font-weight: 600; color: #888; text-align: left; margin: 16px 0 8px; }
     .version-badge {
       display: inline-block;
-      background: var(--green);
+      background: #1A6B3C;
       color: white;
       padding: 3px 10px;
       border-radius: 20px;
       font-size: 11px;
       font-weight: 600;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
-    .spinner {
-      display: inline-block;
-      width: 18px;
-      height: 18px;
-      border: 2.5px solid rgba(255,255,255,0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
+    .footer { margin-top: 16px; font-size: 12px; color: #888; text-align: center; }
+    .footer a { color: #1A6B3C; }
+    .hidden { display: none !important; }
+    .loading { display: inline-block; width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -170,198 +76,152 @@
     <div class="card">
       <div class="icon">📄</div>
       <h1>DSA Malawi</h1>
-      <p class="subtitle">Direct Sales Agent Tool — Free &amp; Open Source</p>
+      <p class="subtitle">Free tool for Direct Sales Agents</p>
 
-      <!-- Detection status -->
-      <div id="detecting" class="device-info">
-        <strong>🔍 Detecting your device...</strong>
-        Checking your phone architecture
+      <!-- Loading state -->
+      <div id="loadingBox" class="info-box">
+        <strong>⏳ Loading...</strong>
+        <span id="loadingText">Fetching latest version</span>
       </div>
 
-      <!-- Known device match -->
-      <div id="matched" class="hidden">
-        <div id="matchedInfo" class="device-info">
-          <strong id="matchedName">📱 Device detected</strong>
-          <span id="matchedAbi">arm64-v8a</span>
+      <!-- Device matched -->
+      <div id="matchedBox" class="hidden">
+        <div id="matchedInfo" class="info-box">
+          <strong id="matchedTitle">📱 Your device</strong>
+          <span id="matchedDesc">arm64-v8a detected</span>
         </div>
-        <a id="downloadBtn" class="btn btn-primary" href="#">
-          ⬇ Download for your phone
-        </a>
+        <a id="downloadBtn" class="btn btn-primary" href="#">⬇ Download for your phone</a>
         <div class="size-note" id="sizeNote"></div>
       </div>
 
-      <!-- Fallback if detection fails -->
-      <div id="fallback" class="hidden">
-        <div class="device-info">
-          <strong>ℹ️ Could not detect automatically</strong>
-          Choose your device type below
+      <!-- Manual selection (shown when detection fails or as fallback) -->
+      <div id="manualBox">
+        <div class="info-box" id="manualInfo">
+          <strong>📱 Choose your device</strong>
+          <span id="manualDesc">Not sure? Try "Modern Phones" first</span>
         </div>
-        <a id="fbArm64" class="btn btn-primary" href="#">
-          📱 Download for Modern Phones
-        </a>
-        <p class="size-note">arm64-v8a — Most phones 2020+ (Samsung, Tecno, etc.)</p>
 
-        <a id="fbArm32" class="btn btn-secondary" href="#">
-          📱 Download for Older / Budget Phones
+        <a id="btnArm64" class="btn btn-primary" href="#">
+          📱 Modern Phones <span style="font-weight:400;font-size:13px;">— most 2020+ devices</span>
         </a>
-        <p class="size-note">armeabi-v7a — Phones before 2020</p>
+        <div class="size-note">arm64-v8a · ~22 MB</div>
 
-        <a id="fbX86" class="btn btn-secondary hidden" href="#">
-          💻 Download for Emulator
+        <a id="btnArm32" class="btn btn-secondary" href="#">
+          📱 Older / Budget Phones <span style="font-weight:400;font-size:13px;">— before 2020</span>
         </a>
-      </div>
+        <div class="size-note">armeabi-v7a · ~19 MB</div>
 
-      <!-- All versions (collapsible) -->
-      <div class="other-downloads">
-        <details>
-          <summary>📦 All available versions</summary>
-          <div class="other-list" id="allDownloads">
-            <a href="#"><span>⏳ Loading...</span></a>
-          </div>
-        </details>
+        <a id="btnUniversal" class="btn btn-secondary" href="#">
+          📱 Universal APK <span style="font-weight:400;font-size:13px;">— works on everything</span>
+        </a>
+        <div class="size-note">~40 MB · larger file, use if unsure</div>
       </div>
     </div>
 
     <div class="footer">
       <span class="version-badge" id="versionBadge">v?.?.?</span>
       <p>Made with ❤️ for Malawi</p>
-      <p><a href="https://github.com/RedsonNgwira/dsa_malawi" style="color: var(--green);">View on GitHub</a></p>
+      <p><a href="https://github.com/RedsonNgwira/dsa_malawi">View on GitHub</a></p>
     </div>
   </div>
 
   <script>
-    // ── Latest release data (auto-refreshed) ──
     const OWNER = 'RedsonNgwira';
     const REPO = 'dsa_malawi';
-    const BASE_URL = `https://github.com/${OWNER}/${REPO}/releases/latest/download`;
+    const BASE_URL = `https://github.com/${OWNER}/${REPO}/releases/download`;
 
-    async function fetchLatestTag() {
-      try {
-        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`);
-        if (!res.ok) throw new Error('API failed');
-        const data = await res.json();
-        return { tag: data.tag_name, version: data.tag_name };
-      } catch (_) {
-        // Fallback: try to get from tags
-        try {
-          const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`);
-          const tags = await res.json();
-          if (tags.length > 0) return { tag: tags[0].name, version: tags[0].name };
-        } catch(_) {}
-        return { tag: 'latest', version: 'latest' };
-      }
-    }
-
-    // ── CPU architecture detection ──
+    // ── Detect Android CPU architecture from user-agent ──
     function detectArch() {
-      const ua = navigator.userAgent;
-      const platform = navigator.platform || '';
-      const isAndroid = /android/i.test(ua);
+      const ua = navigator.userAgent.toLowerCase();
+      const platform = (navigator.platform || '').toLowerCase();
 
-      if (!isAndroid) {
-        return { arch: 'unknown', label: 'Not Android', isAndroid: false };
+      // Not Android at all
+      if (ua.indexOf('android') === -1) return null;
+
+      // arm64 (aarch64) — most phones 2020+
+      if (ua.indexOf('aarch64') !== -1 || ua.indexOf('arm64') !== -1) return 'arm64-v8a';
+
+      // ARM 32-bit — older phones
+      if (ua.indexOf('armv7') !== -1 || ua.indexOf('arm') !== -1) {
+        // If it's arm but not arm64, it's 32-bit
+        if (ua.indexOf('arm64') === -1) return 'armeabi-v7a';
       }
 
-      // Check for arm64 (aarch64)
-      if (/arm64|aarch64/i.test(ua) || /arm.*64/i.test(ua)) {
-        return { arch: 'arm64-v8a', label: 'arm64-v8a (Modern Phone)', isAndroid: true };
-      }
+      // x86_64 — emulators only
+      if (ua.indexOf('x86_64') !== -1 || ua.indexOf('wow64') !== -1) return 'x86_64';
 
-      // Check for ARM (32-bit)
-      if (/arm|armv7/i.test(ua)) {
-        return { arch: 'armeabi-v7a', label: 'armeabi-v7a (Older Phone)', isAndroid: true };
-      }
-
-      // Check for x86_64 (emulator)
-      if (/x86_64|x64|wow64/i.test(ua)) {
-        return { arch: 'x86_64', label: 'x86_64 (Emulator)', isAndroid: true };
-      }
-
-      // Check for x86
-      if (/x86|i686|i386/i.test(ua)) {
-        return { arch: 'x86_64', label: 'x86_64 (Emulator)', isAndroid: true };
-      }
-
-      // Fallback: assume arm64 for modern Android
-      if (isAndroid) {
-        // Modern Android phones are almost all arm64
-        // Check if it's a known brand with recent models
-        return { arch: 'arm64-v8a', label: 'arm64-v8a (detected)', isAndroid: true };
-      }
-
-      return { arch: 'unknown', label: 'Unknown device', isAndroid: false };
+      // Unknown Android — default to arm64 (modern phones)
+      return 'arm64-v8a';
     }
 
-    // ── Build download URL ──
-    function apkUrl(abi, tag) {
-      return `${BASE_URL.replace('/latest', '/' + tag)}/dsa-malawi-${tag}-${abi}.apk`;
+    async function fetchTag() {
+      const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`);
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      return data.tag_name;
     }
 
-    // ── Human-readable file size ──
-    const SIZES = {
-      'arm64-v8a': '~22 MB',
-      'armeabi-v7a': '~19 MB',
-      'x86_64': '~24 MB',
-    };
+    function downloadUrl(tag, abi) {
+      return `${BASE_URL}/${tag}/app-${abi}-release.apk`;
+    }
 
-    // ── Main ──
-    (async () => {
-      const release = await fetchLatestTag();
-      const tag = release.tag;
+    async function main() {
+      let tag = null;
+      try {
+        tag = await fetchTag();
+      } catch (_) {
+        // Fallback: try tags endpoint
+        try {
+          const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`);
+          const tags = await r.json();
+          if (tags.length > 0) tag = tags[0].name;
+        } catch(_) {}
+      }
+      if (!tag) tag = 'latest';
+
       document.getElementById('versionBadge').textContent = tag;
 
-      // Populate all downloads
-      const allList = document.getElementById('allDownloads');
-      const abis = [
-        { abi: 'arm64-v8a', label: '📱 Modern Phones (arm64-v8a)', size: '~22 MB' },
-        { abi: 'armeabi-v7a', label: '📱 Older Phones (armeabi-v7a)', size: '~19 MB' },
-        { abi: 'x86_64', label: '💻 Emulators (x86_64)', size: '~24 MB' },
-      ];
-      allList.innerHTML = abis.map(a =>
-        `<a href="${apkUrl(a.abi, tag)}">
-          <span>${a.label}</span>
-          <span class="abi-tag">${a.size}</span>
-        </a>`
-      ).join('');
-
-      const detection = detectArch();
-      const detecting = document.getElementById('detecting');
-      const matched = document.getElementById('matched');
-      const fallback = document.getElementById('fallback');
-
-      // Set download links for fallback
-      document.getElementById('fbArm64').href = apkUrl('arm64-v8a', tag);
-      document.getElementById('fbArm32').href = apkUrl('armeabi-v7a', tag);
-      document.getElementById('fbX86').href = apkUrl('x86_64', tag);
-      document.getElementById('fbArm64').querySelector('span').textContent = 
-        detection.isAndroid ? '⬇ Download for your phone' : '📱 Download for Modern Phones (arm64-v8a)';
-
-      if (detection.arch !== 'unknown' && detection.isAndroid) {
-        // Show matched download
-        detecting.classList.add('hidden');
-        matched.classList.remove('hidden');
-        document.getElementById('matchedName').textContent = `📱 ${detection.label}`;
-        document.getElementById('matchedAbi').textContent = 
-          `This is the correct APK for your device`;
-        const btn = document.getElementById('downloadBtn');
-        btn.href = apkUrl(detection.arch, tag);
-        document.getElementById('sizeNote').textContent = 
-          `File size: ${SIZES[detection.arch] || '~20 MB'} • APK will install directly`;
-      } else if (!detection.isAndroid) {
-        // Not Android — show fallback
-        detecting.classList.add('hidden');
-        fallback.classList.remove('hidden');
-        document.querySelector('#fallback .device-info strong').textContent = 
-          '💻 Open this page on your Android phone';
-        document.querySelector('#fallback .device-info').innerHTML += 
-          '<br><span style="font-size:12px;">Or download the right version below:</span>';
-        document.getElementById('fbX86').classList.remove('hidden');
-      } else {
-        // Can't detect — show fallback
-        detecting.classList.add('hidden');
-        fallback.classList.remove('hidden');
+      // Set all download links
+      const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
+      for (const abi of abis) {
+        const el = document.getElementById('btn' + abi.charAt(0).toUpperCase() + abi.slice(1).replace('-v7a', '32').replace('-v8a', '64'));
+        // Map ID names to correct element
       }
-    })();
+      document.getElementById('btnArm64').href = downloadUrl(tag, 'arm64-v8a');
+      document.getElementById('btnArm32').href = downloadUrl(tag, 'armeabi-v7a');
+      document.getElementById('btnUniversal').href = downloadUrl(tag, 'release'); // universal
+
+      // Try auto-detection
+      const arch = detectArch();
+      const loadingBox = document.getElementById('loadingBox');
+      const matchedBox = document.getElementById('matchedBox');
+
+      if (arch) {
+        loadingBox.classList.add('hidden');
+        matchedBox.classList.remove('hidden');
+        document.getElementById('matchedTitle').textContent =
+          arch === 'arm64-v8a' ? '📱 Modern Phone Detected' :
+          arch === 'armeabi-v7a' ? '📱 Older Phone Detected' :
+          '💻 Emulator Detected';
+        document.getElementById('matchedDesc').textContent =
+          arch === 'arm64-v8a' ? 'arm64-v8a — this is correct for your phone' :
+          arch === 'armeabi-v7a' ? 'armeabi-v7a — 32-bit phone' :
+          'x86_64 — you are on an emulator';
+        document.getElementById('downloadBtn').href = downloadUrl(tag, arch);
+        document.getElementById('sizeNote').textContent =
+          arch === 'arm64-v8a' ? '~22 MB · ⬇ Tap to download' :
+          arch === 'armeabi-v7a' ? '~19 MB · ⬇ Tap to download' :
+          '~24 MB';
+      } else {
+        // Not on Android — show manual pick
+        loadingBox.classList.add('hidden');
+        document.getElementById('manualInfo').innerHTML =
+          '<strong>💻 Open on your Android phone</strong>' +
+          '<br><span style="font-size:12px;">Or pick the right version below:</span>';
+      }
+    }
+
+    main();
   </script>
 </body>
 </html>

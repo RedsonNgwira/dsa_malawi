@@ -13,6 +13,9 @@ class FormatUtils {
     return 'MWK ${formatNumber(value, decimals: decimals)}';
   }
 
+  /// Alias for mwk.
+  static String currency(double value, {int decimals = 2}) => mwk(value, decimals: decimals);
+
   /// Format file size in human-readable form.
   static String fileSize(int bytes) {
     if (bytes < 1024) return '${bytes}B';

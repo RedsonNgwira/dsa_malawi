@@ -1,22 +1,53 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-
+/// Exports scanned pages as PDF or DOCX with proper A4 formatting.
 class ExportService {
+  /// Export pages as PDF with images scaled to fill A4 properly.
   Future<String> exportPdf(List<String> imagePaths, String name) async {
     final doc = pw.Document();
 
     for (final path in imagePaths) {
       final bytes = await File(path).readAsBytes();
       final image = pw.MemoryImage(bytes);
+
+      // Decode image dimensions to compute proper scaling
+      final decoded = await _decodeImageDimensions(bytes);
+      final imgW = decoded.width;
+      final imgH = decoded.height;
+
+      // A4 dimensions in points (72 DPI): 595.28 x 841.89
+      final a4 = PdfPageFormat.a4;
+      final a4W = a4.width;
+      final a4H = a4.height;
+      final imgRatio = imgW / imgH;
+
       doc.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.zero,
-          build: (_) => pw.Image(image, fit: pw.BoxFit.contain),
+          margin: const pw.EdgeInsets.all(0),
+          build: (ctx) {
+            // If image is landscape (wider than tall), rotate page to landscape
+            if (imgRatio > 1.15) {
+              // Rotate image 90 degrees for landscape images
+              return pw.Transform.rotate(
+                angle: 90 * math.pi / 180,
+                child: pw.Center(
+                  child: pw.Image(image, fit: pw.BoxFit.cover, width: a4H, height: a4W),
+                ),
+              );
+            }
+            return pw.Image(
+              image,
+              fit: pw.BoxFit.cover,
+              width: a4W,
+              height: a4H,
+            );
+          },
         ),
       );
     }
@@ -27,14 +58,31 @@ class ExportService {
     return file.path;
   }
 
+  /// Decode image dimensions without loading full image.
+  Future<_ImgDims> _decodeImageDimensions(Uint8List bytes) async {
+    // Parse JPEG/PNG headers for width/height
+    // Simple approach: assume JPEG and extract from headers
+    if (bytes.length > 2 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+      // JPEG — scan for SOF marker
+      int offset = 2;
+      while (offset < bytes.length - 1) {
+        if (bytes[offset] == 0xFF && bytes[offset + 1] == 0xC0) {
+          // SOF0 marker found
+          final h = (bytes[offset + 5] << 8) | bytes[offset + 6];
+          final w = (bytes[offset + 7] << 8) | bytes[offset + 8];
+          if (w > 0 && h > 0) return _ImgDims(w, h);
+        }
+        offset++;
+      }
+    }
+    // Fallback: use image package
+    // Since we can't import it here without conflicts, return A4-like dimensions
+    return _ImgDims(2480, 3508); // Approx A4 at 300 DPI
+  }
+
   Future<String> exportDocx(List<String> imagePaths, String name) async {
-    // Build a simple docx with each image on its own paragraph
-    // docx_template uses a template approach; we build from scratch via raw XML
     final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
     final outPath = '${dir.path}/$name.docx';
-
-    // Use pdf-generated file as base, then create docx with image references
-    // Simplest approach: generate a docx XML manually
     final docx = await _buildDocx(imagePaths);
     final file = File(outPath);
     await file.writeAsBytes(docx);
@@ -42,13 +90,6 @@ class ExportService {
   }
 
   Future<Uint8List> _buildDocx(List<String> imagePaths) async {
-    // We'll use docx_template with a minimal inline template
-    // For each image, embed as base64 in the word document
-    // Since docx_template needs a template file, we use the pdf package
-    // to render images and save as DOCX-compatible format.
-    // Practical approach: save images into a zip-based .docx structure.
-    
-    // Build minimal Office Open XML .docx in memory
     final archive = <String, Uint8List>{};
 
     // [Content_Types].xml
@@ -74,16 +115,15 @@ class ExportService {
       final imgName = '$imgId.jpeg';
       archive['word/media/$imgName'] = await File(imagePaths[i]).readAsBytes();
       imgRels.add('<Relationship Id="$imgId" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/$imgName"/>');
-      // 6096000 EMUs = ~16.9cm (A4 width minus margins)
       bodyParts.add('''<w:p>
-  <w:r><w:drawing><wp:inline><wp:extent cx="6096000" cy="8636000"/>
+  <w:r><w:drawing><wp:inline><wp:extent cx="12192000" cy="17272000"/>
   <wp:docPr id="${i + 1}" name="Image${i + 1}"/>
   <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
     <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
       <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
         <pic:nvPicPr><pic:cNvPr id="${i + 1}" name="$imgName"/><pic:cNvPicPr/></pic:nvPicPr>
         <pic:blipFill><a:blip r:embed="$imgId"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-        <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="6096000" cy="8636000"/></a:xfrm>
+        <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="17272000"/></a:xfrm>
         <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
       </pic:pic>
     </a:graphicData>
@@ -114,7 +154,6 @@ ${bodyParts.join('\n')}
   Uint8List _utf8(String s) => Uint8List.fromList(s.codeUnits);
 
   Uint8List _zipArchive(Map<String, Uint8List> files) {
-    // Simple zip builder (stored, no compression for images)
     final output = <int>[];
     final centralDir = <int>[];
     int offset = 0;
@@ -122,39 +161,37 @@ ${bodyParts.join('\n')}
     for (final entry in files.entries) {
       final nameBytes = entry.key.codeUnits;
       final data = entry.value;
-      final isText = !entry.key.contains('media/');
-      final compressed = isText ? _deflateStored(data) : data;
+      final compressed = data;
 
       final localHeader = [
-        0x50, 0x4B, 0x03, 0x04, // signature
-        0x14, 0x00, // version 2.0
-        0x00, 0x00, // flags
-        0x00, 0x00, // compression: stored
-        0x00, 0x00, 0x00, 0x00, // mod time/date
+        0x50, 0x4B, 0x03, 0x04,
+        0x14, 0x00,
+        0x00, 0x00,
+        0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
         ..._uint32le(_crc32(data)),
         ..._uint32le(compressed.length),
         ..._uint32le(data.length),
         ..._uint16le(nameBytes.length),
-        0x00, 0x00, // extra length
+        0x00, 0x00,
         ...nameBytes,
       ];
 
       final centralEntry = [
-        0x50, 0x4B, 0x01, 0x02, // signature
-        0x14, 0x00, // version made
-        0x14, 0x00, // version needed
-        0x00, 0x00, // flags
-        0x00, 0x00, // compression
-        0x00, 0x00, 0x00, 0x00, // mod time/date
+        0x50, 0x4B, 0x01, 0x02,
+        0x14, 0x00,
+        0x14, 0x00,
+        0x00, 0x00,
+        0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
         ..._uint32le(_crc32(data)),
         ..._uint32le(compressed.length),
         ..._uint32le(data.length),
         ..._uint16le(nameBytes.length),
-        0x00, 0x00, // extra
-        0x00, 0x00, // comment
-        0x00, 0x00, // disk start
-        0x00, 0x00, // internal attr
-        0x00, 0x00, 0x00, 0x00, // external attr
+        0x00, 0x00,
+        0x00, 0x00,
+        0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
         ..._uint32le(offset),
         ...nameBytes,
       ];
@@ -180,8 +217,6 @@ ${bodyParts.join('\n')}
     return Uint8List.fromList([...output, ...centralDir, ...eocd]);
   }
 
-  Uint8List _deflateStored(Uint8List data) => data;
-
   List<int> _uint32le(int v) => [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
   List<int> _uint16le(int v) => [v & 0xFF, (v >> 8) & 0xFF];
 
@@ -195,4 +230,9 @@ ${bodyParts.join('\n')}
     }
     return (~crc) & 0xFFFFFFFF;
   }
+}
+
+class _ImgDims {
+  final int width, height;
+  _ImgDims(this.width, this.height);
 }

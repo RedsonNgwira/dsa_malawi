@@ -33,7 +33,8 @@ class ProcessedImage {
 /// Advanced image processing for document scanning.
 /// Provides auto-crop, perspective correction, deskew, filters, and compression.
 class ImageProcessor {
-  /// Full auto-enhance pipeline: crop → deskew → enhance → sharpen.
+  /// Full auto-enhance pipeline: crop → deskew → whiten → auto-level → sharpen → contrast.
+  /// Produces clean "scanner app" quality output optimized for documents.
   static Future<ProcessedImage> autoEnhance(String sourcePath) async {
     final original = img.decodeImage(await File(sourcePath).readAsBytes());
     if (original == null) {
@@ -46,16 +47,19 @@ class ImageProcessor {
     // Step 2: Deskew — detect and correct rotation
     result = _deskew(result);
 
-    // Step 3: Auto-level — histogram stretch for better contrast
+    // Step 3: Background whitening — make near-white → pure white
+    result = _whitenBackground(result);
+
+    // Step 4: Auto-level — histogram stretch for full tonal range
     result = _autoLevel(result);
 
-    // Step 4: Subtle sharpen
+    // Step 5: Stronger perceptive contrast for text readability
+    result = img.adjustColor(result, contrast: 1.3, brightness: 0.02);
+
+    // Step 6: Subtle sharpen for crisp text edges
     result = _sharpen(result);
 
-    // Step 5: Boost contrast slightly
-    result = img.adjustColor(result, contrast: 1.15);
-
-    // Step 6: Save
+    // Step 7: Save with high quality
     final dir = Directory(sourcePath).parent;
     final name = 'processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final outPath = '${dir.path}/$name';
@@ -214,6 +218,42 @@ class ImageProcessor {
     final r = gray.getPixel(x + 1, y).luminance.toDouble();
     final d = gray.getPixel(x, y + 1).luminance.toDouble();
     return (c - r).abs() + (c - d).abs();
+  }
+
+  // ── Background Whitening ──
+
+  /// Convert near-white pixels to pure white for a clean scanned look.
+  /// Also boosts text contrast by darkening near-black pixels.
+  static img.Image _whitenBackground(img.Image src) {
+    final result = img.Image(width: src.width, height: src.height, numChannels: src.numChannels);
+    for (final p in src) {
+      int r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();
+
+      // If pixel is light/white-ish, push to pure white
+      if (r > 200 && g > 200 && b > 200) {
+        // Smooth transition to white
+        final brightness = (r + g + b) / 3;
+        if (brightness > 230) {
+          r = 255; g = 255; b = 255;
+        } else {
+          // Gentle push toward white
+          final factor = (brightness - 200) / 55;
+          r = (r + (255 - r) * factor).round().clamp(0, 255);
+          g = (g + (255 - g) * factor).round().clamp(0, 255);
+          b = (b + (255 - b) * factor).round().clamp(0, 255);
+        }
+      }
+
+      // Darken near-black pixels slightly for stronger text
+      if (r < 60 && g < 60 && b < 60) {
+        r = (r * 0.85).round();
+        g = (g * 0.85).round();
+        b = (b * 0.85).round();
+      }
+
+      result.setPixelRgba(p.x, p.y, r, g, b, p.a);
+    }
+    return result;
   }
 
   // ── Auto-Level: Histogram stretch ──

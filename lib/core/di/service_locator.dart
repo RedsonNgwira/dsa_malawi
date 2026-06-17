@@ -3,6 +3,8 @@ import '../../services/export_service.dart';
 import '../../services/image_processor.dart';
 import '../../services/gps_service.dart';
 import '../../services/database_service.dart';
+import '../../services/cloud_backup_service.dart';
+import '../../services/connectivity_service.dart';
 import '../../features/scanner/providers/scanner_controller.dart';
 
 /// Central dependency injection setup.
@@ -12,6 +14,8 @@ Future<void> initDependencies() async {
   // ── Services (singletons) ──
   sl.registerLazySingleton<ExportService>(() => ExportService());
   sl.registerLazySingleton<DatabaseService>(() => DatabaseService());
+  sl.registerLazySingleton<CloudBackupService>(() => CloudBackupService());
+  sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService()..initialize());
   sl.registerLazySingleton<ImageProcessor>(() => ImageProcessor());
   sl.registerLazySingleton<GpsService>(() => GpsService());
 

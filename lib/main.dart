@@ -5,7 +5,6 @@ import 'core/di/service_locator.dart';
 import 'providers/app_state.dart';
 import 'services/connectivity_service.dart';
 import 'services/cloud_backup_service.dart';
-import 'features/scanner/providers/scanner_controller.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
@@ -20,7 +19,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AppState()..initialize()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()..initialize()),
         ChangeNotifierProvider(create: (_) => CloudBackupService()),
-        ChangeNotifierProvider(create: (_) => ScannerController()),
+        ChangeNotifierProvider(create: (_) => sl<ScannerController>()),
       ],
       child: const DSAApp(),
     ),

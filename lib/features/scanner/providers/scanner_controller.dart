@@ -9,11 +9,15 @@ import '../../../services/image_processor.dart';
 import '../../../services/gps_service.dart';
 import '../../../services/export_service.dart';
 import '../../../providers/app_state.dart';
-import '../../../core/di/service_locator.dart';
 import '../providers/smart_scanner_service.dart';
 import '../screens/scan_page_model.dart';
 
 class ScannerController extends ChangeNotifier {
+  final ExportService _exportService;
+
+  ScannerController({required ExportService exportService})
+      : _exportService = exportService;
+
   CameraController? _camera;
   bool _cameraReady = false, _showCamera = false, _isProcessing = false;
   int? _recaptureIndex;
@@ -156,11 +160,11 @@ class ScannerController extends ChangeNotifier {
   }
 
   Future<void> export(BuildContext ctx, String name, bool pdf, bool docx) async {
-    final svc = sl<ExportService>(); final appState = Provider.of<AppState>(ctx, listen: false);
+    final appState = Provider.of<AppState>(ctx, listen: false);
     final paths = _pages.map((p) => p.path).toList();
     try {
-      if (pdf) { final p = await svc.exportPdf(paths, name); await appState.addExportRecord({'file_name': '$name.pdf', 'file_path': p, 'file_type': 'PDF', 'page_count': _pages.length, 'file_size': File(p).lengthSync()}); }
-      if (docx) { final p = await svc.exportDocx(paths, name); await appState.addExportRecord({'file_name': '$name.docx', 'file_path': p, 'file_type': 'DOCX', 'page_count': _pages.length, 'file_size': File(p).lengthSync()}); }
+      if (pdf) { final p = await _exportService.exportPdf(paths, name); await appState.addExportRecord({'file_name': '$name.pdf', 'file_path': p, 'file_type': 'PDF', 'page_count': _pages.length, 'file_size': File(p).lengthSync()}); }
+      if (docx) { final p = await _exportService.exportDocx(paths, name); await appState.addExportRecord({'file_name': '$name.docx', 'file_path': p, 'file_type': 'DOCX', 'page_count': _pages.length, 'file_size': File(p).lengthSync()}); }
     } catch (e) { rethrow; }
   }
 

@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/export_service.dart';
+import '../services/gps_service.dart';
 import '../services/image_processor.dart';
 import '../widgets/page_thumbnail.dart';
 
@@ -63,17 +64,22 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
     // Process the image (auto-crop + enhance)
     setState(() => _isProcessing = true);
+
+    // Capture GPS location simultaneously
+    final gpsFuture = GpsService.captureLocation();
+
     try {
       final processed = await ImageProcessor.autoEnhance(rawPath);
+      final gpsLoc = await gpsFuture;
       final page = _ScanPage(
         path: processed.outputPath,
         rawPath: rawPath,
         filter: FilterPreset.enhanced,
+        gps: gpsLoc,
       );
 
       setState(() {
         if (_recaptureIndex != null) {
-          // Delete old files
           final old = _pages[_recaptureIndex!];
           File(old.path).deleteSync(recursive: true);
           if (old.rawPath != old.path) File(old.rawPath).deleteSync(recursive: true);
@@ -86,8 +92,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
         _isProcessing = false;
       });
     } catch (e) {
-      // Fall back to unprocessed image
-      final page = _ScanPage(path: rawPath, rawPath: rawPath, filter: FilterPreset.original);
+      final gpsLoc = await gpsFuture;
+      final page = _ScanPage(
+        path: rawPath, rawPath: rawPath,
+        filter: FilterPreset.original,
+        gps: gpsLoc,
+      );
       setState(() {
         if (_recaptureIndex != null) {
           final old = _pages[_recaptureIndex!];
@@ -111,6 +121,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
     setState(() => _isProcessing = true);
     final dir = await getApplicationDocumentsDirectory();
 
+    // Capture one GPS location for the batch
+    final gpsLoc = await GpsService.captureLocation();
+
     for (final picked in pickedFiles) {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final rawPath = '${dir.path}/gallery_$timestamp.jpg';
@@ -122,9 +135,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
           path: processed.outputPath,
           rawPath: rawPath,
           filter: FilterPreset.enhanced,
+          gps: gpsLoc,
         ));
       } catch (e) {
-        _pages.add(_ScanPage(path: rawPath, rawPath: rawPath, filter: FilterPreset.original));
+        _pages.add(_ScanPage(
+          path: rawPath, rawPath: rawPath,
+          filter: FilterPreset.original,
+          gps: gpsLoc,
+        ));
       }
     }
 
@@ -209,6 +227,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
         icon = Icons.contrast;
       case FilterPreset.enhanced:
         icon = Icons.auto_fix_high;
+      case FilterPreset.autoLevel:
+        icon = Icons.exposure;
+      case FilterPreset.sharpen:
+        icon = Icons.blur_on;
+      case FilterPreset.lightweight:
+        icon = Icons.flash_on;
     }
     return Icon(icon, size: 20, color: Colors.grey);
   }
@@ -499,17 +523,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 }
 
-/// Internal model for a scanned page with its filter state.
+/// Internal model for a scanned page with its filter state and GPS data.
 class _ScanPage {
   final String path;
   final String rawPath;
   final FilterPreset filter;
+  final GpsLocation? gps;
 
   _ScanPage({
     required this.path,
     required this.rawPath,
     required this.filter,
+    this.gps,
   });
+
+  bool get hasGps => gps != null;
+  String get locationLabel => gps != null
+      ? '${gps!.latitude.toStringAsFixed(4)}, ${gps!.longitude.toStringAsFixed(4)}'
+      : '';
 }
 
 class _CornerPainter extends CustomPainter {

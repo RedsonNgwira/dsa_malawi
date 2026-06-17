@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'providers/app_state.dart';
+import 'services/connectivity_service.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
@@ -10,8 +11,11 @@ import 'screens/about_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState()..initialize(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()..initialize()),
+        ChangeNotifierProvider(create: (_) => ConnectivityService()..initialize()),
+      ],
       child: const DSAApp(),
     ),
   );
@@ -23,8 +27,6 @@ class DSAApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-
-    // Seed color
     const seedColor = Color(0xFF1A6B3C); // Malawi green
 
     return MaterialApp(
@@ -71,6 +73,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final connectivity = context.watch<ConnectivityService>();
+
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: NavigationBar(
@@ -99,6 +103,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      // Connectivity status banner at bottom
+      bottomSheet: connectivity.initialized && !connectivity.isOnline
+          ? Container(
+              width: double.infinity,
+              color: Colors.orange.shade800,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text(
+                    'You are offline — documents will send when connected',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 }

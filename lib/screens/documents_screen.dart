@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import 'file_viewer_screen.dart';
@@ -98,10 +99,29 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Future<void> _shareViaWhatsApp(File file) async {
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      subject: file.uri.pathSegments.last,
-    );
+    final name = file.uri.pathSegments.last;
+    // Try WhatsApp deep link first — sends text + file info
+    final phone = ''; // Optional: add default bank office WhatsApp number
+    final text = Uri.encodeComponent('Document from DSA Malawi: $name');
+    final waUrl = 'https://api.whatsapp.com/send?${phone.isNotEmpty ? "phone=$phone&" : ""}text=$text';
+
+    try {
+      final uri = Uri.parse(waUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to share sheet
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: name,
+        );
+      }
+    } catch (_) {
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: name,
+      );
+    }
   }
 
   Future<void> _shareViaEmail(File file) async {

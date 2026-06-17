@@ -85,6 +85,7 @@ class DatabaseService {
         'admin_fee_standard': 0.025,
         'admin_fee_platinum': 0.07,
         'monthly_insurance': 0.00125,
+        'commission_rate': 0.01,
       }),
     });
     await db.insert('app_settings', {

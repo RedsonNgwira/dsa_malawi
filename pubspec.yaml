@@ -39,6 +39,10 @@ dependencies:
   sqflite: ^2.4.1
   # Image compression
   flutter_image_compress: ^2.3.0
+  # GPS location
+  geolocator: ^13.0.2
+  # Network connectivity
+  connectivity_plus: ^6.1.1
 
 dev_dependencies:
   flutter_test:

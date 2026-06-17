@@ -325,6 +325,13 @@ class _LoanCalcScreenState extends State<LoanCalcScreen> {
                     _ResultRow('Net Pay to Customer', _mwk(result.netPay), bold: true),
                     _ResultRow('Total Repayable', _mwk(result.totalRepayable)),
                     _ResultRow('Cost of Credit', _mwk(result.totalRepayable - result.loanAmount)),
+                    const Divider(),
+                    _ResultRow(
+                      'Your Commission (est.)',
+                      _mwk((result.loanAmount * ((state.feeRates['commission_rate'] ?? 0.01) as double))),
+                      bold: true,
+                      highlight: true,
+                    ),
                     const SizedBox(height: 8),
                     // Save button
                     FilledButton.tonalIcon(

@@ -8,6 +8,7 @@ class PageThumbnail extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback? onFilter;
   final String? filterLabel;
+  final String? gpsLabel;
 
   const PageThumbnail({
     super.key,
@@ -17,6 +18,7 @@ class PageThumbnail extends StatelessWidget {
     required this.onDelete,
     this.onFilter,
     this.filterLabel,
+    this.gpsLabel,
   });
 
   @override
@@ -34,9 +36,7 @@ class PageThumbnail extends StatelessWidget {
               height: double.infinity,
               errorBuilder: (_, __, ___) => Container(
                 color: Colors.grey.shade200,
-                child: const Center(
-                  child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                ),
+                child: const Center(child: Icon(Icons.broken_image, size: 40, color: Colors.grey)),
               ),
             ),
           ),
@@ -45,49 +45,48 @@ class PageThumbnail extends StatelessWidget {
             top: 6, left: 6,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'Page $pageNumber',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
+              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+              child: Text('Page $pageNumber', style: const TextStyle(color: Colors.white, fontSize: 12)),
             ),
           ),
-          // Filter label badge
-          if (filterLabel != null)
+          // Filter + GPS badges
+          if (filterLabel != null || gpsLabel != null)
             Positioned(
               bottom: 6, left: 6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.auto_fix_high, size: 10, color: Colors.green.shade300),
-                    const SizedBox(width: 3),
-                    Text(
-                      filterLabel!,
-                      style: TextStyle(color: Colors.green.shade200, fontSize: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (filterLabel != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_fix_high, size: 10, color: Colors.green.shade300),
+                          const SizedBox(width: 2),
+                          Text(filterLabel!, style: TextStyle(color: Colors.green.shade200, fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  if (gpsLabel != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+                      child: Text(gpsLabel!, style: const TextStyle(fontSize: 11)),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
-          // Action button
+          // Menu button
           Positioned(
             top: 4, right: 4,
             child: GestureDetector(
               onTap: () => _showOptions(context),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                ),
+                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
                 child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
               ),
             ),

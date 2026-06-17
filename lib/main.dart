@@ -4,7 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'services/connectivity_service.dart';
 import 'services/cloud_backup_service.dart';
-import 'screens/scanner_screen.dart';
+import 'features/scanner/screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
 import 'screens/about_screen.dart';
@@ -63,10 +63,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final connectivity = context.watch<ConnectivityService>();
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      extendBody: true,
+      body: AnimatedSwitcher(
+        duration: AppTheme.normal,
+        switchInCurve: AppTheme.easeOut,
+        switchOutCurve: AppTheme.easeInOut,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.04, 0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: animation, curve: AppTheme.easeOut)),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_currentIndex),
+          child: _screens[_currentIndex],
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        animationDuration: AppTheme.fast,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.document_scanner_outlined),
@@ -94,15 +116,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ? Container(
               width: double.infinity,
               color: Colors.orange.shade800,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.md, vertical: AppTheme.sm - 2),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.wifi_off, size: 16, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'You are offline — documents will send when connected',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  const Icon(Icons.wifi_off, size: 14, color: Colors.white),
+                  const SizedBox(width: AppTheme.sm),
+                  const Text(
+                    'You are offline',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),

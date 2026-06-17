@@ -38,11 +38,8 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
   }
 
   @override
-  void dispose() {
-    _recipientCtrl.dispose(); _subjectCtrl.dispose(); _bodyCtrl.dispose();
-    _clientNameCtrl.dispose(); _loanAmountCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _recipientCtrl.dispose(); _subjectCtrl.dispose(); _bodyCtrl.dispose();
+    _clientNameCtrl.dispose(); _loanAmountCtrl.dispose(); super.dispose(); }
 
   void _applyTemplate(Map<String, dynamic> t) {
     setState(() {
@@ -57,26 +54,16 @@ class _EmailComposerScreenState extends State<EmailComposerScreen> {
     final cn = _clientNameCtrl.text.trim();
     final la = _loanAmountCtrl.text.trim();
     final s = 'DSA Agent';
-    String subj = _subjectCtrl.text, body = _bodyCtrl.text;
-    for (final s in [subj, body]) {
-      // run replacement on each
-    }
-    _subjectCtrl.text = subj
-      .replaceAll('{client_name}', cn.isNotEmpty ? cn : '______')
+    _subjectCtrl.text = _subjectCtrl.text.replaceAll('{client_name}', cn.isNotEmpty ? cn : '______')
       .replaceAll('{recipient_name}', '______')
       .replaceAll('{loan_amount}', la.isNotEmpty ? 'MWK $la' : '______')
-      .replaceAll('{term}', '______')
-      .replaceAll('{sender_name}', s)
-      .replaceAll('{submission_date}', '______')
-      .replaceAll('{message}', '______');
-    _bodyCtrl.text = body
-      .replaceAll('{client_name}', cn.isNotEmpty ? cn : '______')
+      .replaceAll('{term}', '______').replaceAll('{sender_name}', s)
+      .replaceAll('{submission_date}', '______').replaceAll('{message}', '______');
+    _bodyCtrl.text = _bodyCtrl.text.replaceAll('{client_name}', cn.isNotEmpty ? cn : '______')
       .replaceAll('{recipient_name}', '______')
       .replaceAll('{loan_amount}', la.isNotEmpty ? 'MWK $la' : '______')
-      .replaceAll('{term}', '______')
-      .replaceAll('{sender_name}', s)
-      .replaceAll('{submission_date}', '______')
-      .replaceAll('{message}', '______');
+      .replaceAll('{term}', '______').replaceAll('{sender_name}', s)
+      .replaceAll('{submission_date}', '______').replaceAll('{message}', '______');
     if (!_subjectCtrl.text.contains('{') && !_bodyCtrl.text.contains('{')) {
       setState(() => _showPlaceholders = false);
     }

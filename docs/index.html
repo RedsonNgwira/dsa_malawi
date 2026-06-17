@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSA Malawi - Download</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+  <style>
+    :root {
+      --green: #1A6B3C;
+      --green-dark: #14522E;
+      --green-light: #E8F5E9;
+      --bg: #F5F7F6;
+      --card: #FFFFFF;
+      --text: #1A1A1A;
+      --text-light: #666;
+      --radius: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .icon {
+      font-size: 56px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      color: var(--text-light);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .device-info {
+      background: var(--green-light);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: var(--green-dark);
+    }
+    .device-info strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary {
+      background: var(--green);
+      color: white;
+      margin-bottom: 16px;
+    }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid #ddd;
+      font-size: 14px;
+      padding: 12px 20px;
+    }
+    .size-note {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 8px;
+    }
+    .other-downloads {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .other-downloads summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-light);
+      font-weight: 500;
+    }
+    .other-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .other-list a {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #f8f8f8;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+    .other-list a:hover { background: #eee; }
+    .abi-name { font-weight: 600; }
+    .abi-tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--green-light);
+      color: var(--green-dark);
+    }
+    .footer {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--text-light);
+      text-align: center;
+    }
+    .version-badge {
+      display: inline-block;
+      background: var(--green);
+      color: white;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="icon">📄</div>
+      <h1>DSA Malawi</h1>
+      <p class="subtitle">Direct Sales Agent Tool — Free &amp; Open Source</p>
+
+      <!-- Detection status -->
+      <div id="detecting" class="device-info">
+        <strong>🔍 Detecting your device...</strong>
+        Checking your phone architecture
+      </div>
+
+      <!-- Known device match -->
+      <div id="matched" class="hidden">
+        <div id="matchedInfo" class="device-info">
+          <strong id="matchedName">📱 Device detected</strong>
+          <span id="matchedAbi">arm64-v8a</span>
+        </div>
+        <a id="downloadBtn" class="btn btn-primary" href="#">
+          ⬇ Download for your phone
+        </a>
+        <div class="size-note" id="sizeNote"></div>
+      </div>
+
+      <!-- Fallback if detection fails -->
+      <div id="fallback" class="hidden">
+        <div class="device-info">
+          <strong>ℹ️ Could not detect automatically</strong>
+          Choose your device type below
+        </div>
+        <a id="fbArm64" class="btn btn-primary" href="#">
+          📱 Download for Modern Phones
+        </a>
+        <p class="size-note">arm64-v8a — Most phones 2020+ (Samsung, Tecno, etc.)</p>
+
+        <a id="fbArm32" class="btn btn-secondary" href="#">
+          📱 Download for Older / Budget Phones
+        </a>
+        <p class="size-note">armeabi-v7a — Phones before 2020</p>
+
+        <a id="fbX86" class="btn btn-secondary hidden" href="#">
+          💻 Download for Emulator
+        </a>
+      </div>
+
+      <!-- All versions (collapsible) -->
+      <div class="other-downloads">
+        <details>
+          <summary>📦 All available versions</summary>
+          <div class="other-list" id="allDownloads">
+            <a href="#"><span>⏳ Loading...</span></a>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span class="version-badge" id="versionBadge">v?.?.?</span>
+      <p>Made with ❤️ for Malawi</p>
+      <p><a href="https://github.com/RedsonNgwira/dsa_malawi" style="color: var(--green);">View on GitHub</a></p>
+    </div>
+  </div>
+
+  <script>
+    // ── Latest release data (auto-refreshed) ──
+    const OWNER = 'RedsonNgwira';
+    const REPO = 'dsa_malawi';
+    const BASE_URL = `https://github.com/${OWNER}/${REPO}/releases/latest/download`;
+
+    async function fetchLatestTag() {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/latest`);
+        if (!res.ok) throw new Error('API failed');
+        const data = await res.json();
+        return { tag: data.tag_name, version: data.tag_name };
+      } catch (_) {
+        // Fallback: try to get from tags
+        try {
+          const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`);
+          const tags = await res.json();
+          if (tags.length > 0) return { tag: tags[0].name, version: tags[0].name };
+        } catch(_) {}
+        return { tag: 'latest', version: 'latest' };
+      }
+    }
+
+    // ── CPU architecture detection ──
+    function detectArch() {
+      const ua = navigator.userAgent;
+      const platform = navigator.platform || '';
+      const isAndroid = /android/i.test(ua);
+
+      if (!isAndroid) {
+        return { arch: 'unknown', label: 'Not Android', isAndroid: false };
+      }
+
+      // Check for arm64 (aarch64)
+      if (/arm64|aarch64/i.test(ua) || /arm.*64/i.test(ua)) {
+        return { arch: 'arm64-v8a', label: 'arm64-v8a (Modern Phone)', isAndroid: true };
+      }
+
+      // Check for ARM (32-bit)
+      if (/arm|armv7/i.test(ua)) {
+        return { arch: 'armeabi-v7a', label: 'armeabi-v7a (Older Phone)', isAndroid: true };
+      }
+
+      // Check for x86_64 (emulator)
+      if (/x86_64|x64|wow64/i.test(ua)) {
+        return { arch: 'x86_64', label: 'x86_64 (Emulator)', isAndroid: true };
+      }
+
+      // Check for x86
+      if (/x86|i686|i386/i.test(ua)) {
+        return { arch: 'x86_64', label: 'x86_64 (Emulator)', isAndroid: true };
+      }
+
+      // Fallback: assume arm64 for modern Android
+      if (isAndroid) {
+        // Modern Android phones are almost all arm64
+        // Check if it's a known brand with recent models
+        return { arch: 'arm64-v8a', label: 'arm64-v8a (detected)', isAndroid: true };
+      }
+
+      return { arch: 'unknown', label: 'Unknown device', isAndroid: false };
+    }
+
+    // ── Build download URL ──
+    function apkUrl(abi, tag) {
+      return `${BASE_URL.replace('/latest', '/' + tag)}/dsa-malawi-${tag}-${abi}.apk`;
+    }
+
+    // ── Human-readable file size ──
+    const SIZES = {
+      'arm64-v8a': '~22 MB',
+      'armeabi-v7a': '~19 MB',
+      'x86_64': '~24 MB',
+    };
+
+    // ── Main ──
+    (async () => {
+      const release = await fetchLatestTag();
+      const tag = release.tag;
+      document.getElementById('versionBadge').textContent = tag;
+
+      // Populate all downloads
+      const allList = document.getElementById('allDownloads');
+      const abis = [
+        { abi: 'arm64-v8a', label: '📱 Modern Phones (arm64-v8a)', size: '~22 MB' },
+        { abi: 'armeabi-v7a', label: '📱 Older Phones (armeabi-v7a)', size: '~19 MB' },
+        { abi: 'x86_64', label: '💻 Emulators (x86_64)', size: '~24 MB' },
+      ];
+      allList.innerHTML = abis.map(a =>
+        `<a href="${apkUrl(a.abi, tag)}">
+          <span>${a.label}</span>
+          <span class="abi-tag">${a.size}</span>
+        </a>`
+      ).join('');
+
+      const detection = detectArch();
+      const detecting = document.getElementById('detecting');
+      const matched = document.getElementById('matched');
+      const fallback = document.getElementById('fallback');
+
+      // Set download links for fallback
+      document.getElementById('fbArm64').href = apkUrl('arm64-v8a', tag);
+      document.getElementById('fbArm32').href = apkUrl('armeabi-v7a', tag);
+      document.getElementById('fbX86').href = apkUrl('x86_64', tag);
+      document.getElementById('fbArm64').querySelector('span').textContent = 
+        detection.isAndroid ? '⬇ Download for your phone' : '📱 Download for Modern Phones (arm64-v8a)';
+
+      if (detection.arch !== 'unknown' && detection.isAndroid) {
+        // Show matched download
+        detecting.classList.add('hidden');
+        matched.classList.remove('hidden');
+        document.getElementById('matchedName').textContent = `📱 ${detection.label}`;
+        document.getElementById('matchedAbi').textContent = 
+          `This is the correct APK for your device`;
+        const btn = document.getElementById('downloadBtn');
+        btn.href = apkUrl(detection.arch, tag);
+        document.getElementById('sizeNote').textContent = 
+          `File size: ${SIZES[detection.arch] || '~20 MB'} • APK will install directly`;
+      } else if (!detection.isAndroid) {
+        // Not Android — show fallback
+        detecting.classList.add('hidden');
+        fallback.classList.remove('hidden');
+        document.querySelector('#fallback .device-info strong').textContent = 
+          '💻 Open this page on your Android phone';
+        document.querySelector('#fallback .device-info').innerHTML += 
+          '<br><span style="font-size:12px;">Or download the right version below:</span>';
+        document.getElementById('fbX86').classList.remove('hidden');
+      } else {
+        // Can't detect — show fallback
+        detecting.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -32,7 +32,6 @@ class FilterTool {
     'magicColor': 'auto_awesome', 'photocopy': 'content_copy',
   };
 
-  /// Sauvola adaptive threshold — per-pixel local analysis for crisp text.
   static img.Image _sauvolaThreshold(img.Image src) {
     final gray = img.grayscale(src);
     const ws = 15, hw = ws ~/ 2; const k = 0.2; const r = 128.0;
@@ -40,41 +39,52 @@ class FilterTool {
     final integralSq = _integralSumTableSq(gray);
     final result = img.Image(width: gray.width, height: gray.height, numChannels: 3);
     final w = gray.width, h = gray.height;
-    for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-      final x1 = max(0, x - hw), y1 = max(0, y - hw);
-      final x2 = min(w - 1, x + hw), y2 = min(h - 1, y + hw);
-      final n = (x2 - x1 + 1) * (y2 - y1 + 1);
-      final mean = _sum(integral, x1, y1, x2, y2) / n;
-      final var_ = (_sum(integralSq, x1, y1, x2, y2) / n) - mean * mean;
-      final std = sqrt(max(0.0, var_));
-      final thresh = mean * (1.0 + k * ((std / r) - 1.0));
-      if (gray.getPixel(x, y).luminance > thresh) {
-        result.setPixelRgba(x, y, 255, 255, 255, 255);
-      } else result.setPixelRgba(x, y, 0, 0, 0, 255);
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final x1 = max(0, x - hw), y1 = max(0, y - hw);
+        final x2 = min(w - 1, x + hw), y2 = min(h - 1, y + hw);
+        final n = (x2 - x1 + 1) * (y2 - y1 + 1);
+        final mean = _sum(integral, x1, y1, x2, y2) / n;
+        final var_ = (_sum(integralSq, x1, y1, x2, y2) / n) - mean * mean;
+        final std = sqrt(max(0.0, var_));
+        final thresh = mean * (1.0 + k * ((std / r) - 1.0));
+        if (gray.getPixel(x, y).luminance > thresh) {
+          result.setPixelRgba(x, y, 255, 255, 255, 255);
+        } else {
+          result.setPixelRgba(x, y, 0, 0, 0, 255);
+        }
+      }
     }
     return result;
   }
 
   static img.Image _photocopy(img.Image src) {
     var result = _sauvolaThreshold(src);
-    for (final p in result) if (p.r > 200) p.setRgba(255, 255, 255, 255);
+    for (final p in result) {
+      if (p.r > 200) p.setRgba(255, 255, 255, 255);
+    }
     return result;
   }
 
   static List<List<double>> _integralSumTable(img.Image gray) {
     final w = gray.width, h = gray.height;
     final t = List.generate(h + 1, (_) => List.filled(w + 1, 0.0));
-    for (int y = 0; y < h; y++) for (int x = 0; x < w; x++)
-      t[y + 1][x + 1] = gray.getPixel(x, y).luminance + t[y][x + 1] + t[y + 1][x] - t[y][x];
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        t[y + 1][x + 1] = gray.getPixel(x, y).luminance + t[y][x + 1] + t[y + 1][x] - t[y][x];
+      }
+    }
     return t;
   }
 
   static List<List<double>> _integralSumTableSq(img.Image gray) {
     final w = gray.width, h = gray.height;
     final t = List.generate(h + 1, (_) => List.filled(w + 1, 0.0));
-    for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-      final v = gray.getPixel(x, y).luminance;
-      t[y + 1][x + 1] = v * v + t[y][x + 1] + t[y + 1][x] - t[y][x];
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final v = gray.getPixel(x, y).luminance;
+        t[y + 1][x + 1] = v * v + t[y][x + 1] + t[y + 1][x] - t[y][x];
+      }
     }
     return t;
   }
@@ -84,26 +94,37 @@ class FilterTool {
 
   static img.Image _autoLevel(img.Image src) {
     int minL = 255, maxL = 0;
-    for (final p in src) { final l = (p.r + p.g + p.b) / 3; if (l < minL) minL = l.toInt(); if (l > maxL) maxL = l.toInt(); }
+    for (final p in src) {
+      final l = (p.r + p.g + p.b) / 3;
+      if (l < minL) { minL = l.toInt(); }
+      if (l > maxL) { maxL = l.toInt(); }
+    }
     if (maxL - minL < 10) return src;
     final result = img.Image(width: src.width, height: src.height, numChannels: src.numChannels);
-    for (final p in src) result.setPixelRgba(p.x, p.y,
-      ((p.r - minL) * 255 / (maxL - minL)).round().clamp(0, 255),
-      ((p.g - minL) * 255 / (maxL - minL)).round().clamp(0, 255),
-      ((p.b - minL) * 255 / (maxL - minL)).round().clamp(0, 255), p.a);
+    for (final p in src) {
+      result.setPixelRgba(p.x, p.y,
+        ((p.r - minL) * 255 / (maxL - minL)).round().clamp(0, 255),
+        ((p.g - minL) * 255 / (maxL - minL)).round().clamp(0, 255),
+        ((p.b - minL) * 255 / (maxL - minL)).round().clamp(0, 255), p.a);
+    }
     return result;
   }
 
   static img.Image _sharpen(img.Image src) {
     final result = img.Image(width: src.width, height: src.height, numChannels: src.numChannels);
     const kernel = [[0, -1, 0], [-1, 5, -1], [0, -1, 0]];
-    for (int y = 1; y < src.height - 1; y++) for (int x = 1; x < src.width - 1; x++) {
-      double r = 0, g = 0, b = 0;
-      for (int ky = -1; ky <= 1; ky++) for (int kx = -1; kx <= 1; kx++) {
-        final p = src.getPixel(x + kx, y + ky); final k = kernel[ky + 1][kx + 1];
-        r += p.r * k; g += p.g * k; b += p.b * k;
+    for (int y = 1; y < src.height - 1; y++) {
+      for (int x = 1; x < src.width - 1; x++) {
+        double r = 0, g = 0, b = 0;
+        for (int ky = -1; ky <= 1; ky++) {
+          for (int kx = -1; kx <= 1; kx++) {
+            final p = src.getPixel(x + kx, y + ky);
+            final k = kernel[ky + 1][kx + 1];
+            r += p.r * k; g += p.g * k; b += p.b * k;
+          }
+        }
+        result.setPixelRgba(x, y, r.round().clamp(0, 255), g.round().clamp(0, 255), b.round().clamp(0, 255), src.getPixel(x, y).a);
       }
-      result.setPixelRgba(x, y, r.round().clamp(0, 255), g.round().clamp(0, 255), b.round().clamp(0, 255), src.getPixel(x, y).a);
     }
     for (int x = 0; x < src.width; x++) {
       result.setPixelRgba(x, 0, src.getPixel(x, 0).r, src.getPixel(x, 0).g, src.getPixel(x, 0).b, src.getPixel(x, 0).a);
@@ -118,7 +139,9 @@ class FilterTool {
 
   static img.Image _invert(img.Image src) {
     final result = img.Image(width: src.width, height: src.height, numChannels: src.numChannels);
-    for (final p in src) result.setPixelRgba(p.x, p.y, 255 - p.r, 255 - p.g, 255 - p.b, p.a);
+    for (final p in src) {
+      result.setPixelRgba(p.x, p.y, 255 - p.r, 255 - p.g, 255 - p.b, p.a);
+    }
     return result;
   }
 

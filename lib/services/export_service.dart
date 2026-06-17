@@ -76,7 +76,12 @@ class ExportService {
 
   List<int> _crc32le(Uint8List data) {
     var c = 0xFFFFFFFF;
-    for (final b in data) { c ^= b; for (var i = 0; i < 8; i++) c = (c & 1) != 0 ? (c >> 1) ^ 0xEDB88320 : c >> 1; }
+    for (final b in data) {
+      c ^= b;
+      for (var i = 0; i < 8; i++) {
+        c = (c & 1) != 0 ? (c >> 1) ^ 0xEDB88320 : c >> 1;
+      }
+    }
     return _i32le((~c) & 0xFFFFFFFF);
   }
 }

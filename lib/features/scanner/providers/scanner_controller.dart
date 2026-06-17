@@ -70,12 +70,14 @@ class ScannerController extends ChangeNotifier {
       final xStep = srcW ~/ tw, yStep = srcH ~/ th;
       var edgeCount = 0;
       int minX = tw, minY = th, maxX = 0, maxY = 0;
-      for (int y = 2; y < th - 2; y++) for (int x = 2; x < tw - 2; x++) {
-        final sx = (x * xStep + xStep ~/ 2).clamp(xStep, srcW - xStep - 1);
-        final sy = (y * yStep + yStep ~/ 2).clamp(yStep, srcH - yStep - 1);
-        if ((yPlane[sy * srcW + (sx + xStep)] - yPlane[sy * srcW + (sx - xStep)]).abs() + (yPlane[(sy + yStep) * srcW + sx] - yPlane[(sy - yStep) * srcW + sx]).abs() > 30) {
-          edgeCount++;
-          if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+      for (int y = 2; y < th - 2; y++) {
+        for (int x = 2; x < tw - 2; x++) {
+          final sx = (x * xStep + xStep ~/ 2).clamp(xStep, srcW - xStep - 1);
+          final sy = (y * yStep + yStep ~/ 2).clamp(yStep, srcH - yStep - 1);
+          if ((yPlane[sy * srcW + (sx + xStep)] - yPlane[sy * srcW + (sx - xStep)]).abs() + (yPlane[(sy + yStep) * srcW + sx] - yPlane[(sy - yStep) * srcW + sx]).abs() > 30) {
+            edgeCount++;
+            if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+          }
         }
       }
       final ratio = edgeCount / (tw * th);
@@ -147,7 +149,10 @@ class ScannerController extends ChangeNotifier {
     final page = _pages.removeAt(oldIndex); _pages.insert(newIndex, page); notifyListeners();
   }
 
-  void clearAll() { for (final p in _pages) p.deleteFiles(); _pages.clear(); notifyListeners(); }
+  void clearAll() {
+    for (final p in _pages) { p.deleteFiles(); }
+    _pages.clear(); notifyListeners();
+  }
 
   Future<void> applyFilter(int index, FilterPreset filter) async {
     final page = _pages[index]; _isProcessing = true; notifyListeners();

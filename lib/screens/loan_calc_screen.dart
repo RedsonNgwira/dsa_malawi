@@ -41,9 +41,11 @@ class _LoanCalcScreenState extends State<LoanCalcScreen> {
     if (result != null) {
       state.updateInterestRates(result['rates'] as Map<String, dynamic>);
       state.updateFeeRates(result['fees'] as Map<String, dynamic>);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rates updated')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rates updated')),
+        );
+      }
     }
   }
 
@@ -57,9 +59,11 @@ class _LoanCalcScreenState extends State<LoanCalcScreen> {
       'monthly_instalment': result.monthlyInstalment,
       'total_repayable': result.totalRepayable, 'net_pay': result.netPay,
     });
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Calculation saved!')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Calculation saved!')),
+      );
+    }
   }
 
   @override
@@ -95,7 +99,7 @@ class _LoanCalcScreenState extends State<LoanCalcScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _termMonths, decoration: const InputDecoration(labelText: 'Term', border: OutlineInputBorder()),
+                  initialValue: _termMonths, decoration: const InputDecoration(labelText: 'Term', border: OutlineInputBorder()),
                   items: LoanCalcService.termOptions.map((t) => DropdownMenuItem(value: t, child: Text('$t months'))).toList(),
                   onChanged: (v) => setState(() => _termMonths = v!),
                 ),

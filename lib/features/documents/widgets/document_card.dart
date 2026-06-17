@@ -15,7 +15,7 @@ class DocumentCard extends StatelessWidget {
     final name = file.uri.pathSegments.last;
     final modified = file.statSync().modified;
     final dateStr = '${modified.day}/${modified.month}/${modified.year}  ${modified.hour}:${modified.minute.toString().padLeft(2, '0')}';
-    final size = (file.lengthSync() / 1024).toStringAsFixed(0) + ' KB';
+    final size = '${(file.lengthSync() / 1024).toStringAsFixed(0)} KB';
     return Card(
       child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12),
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

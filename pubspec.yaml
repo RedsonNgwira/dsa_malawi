@@ -43,6 +43,11 @@ dependencies:
   geolocator: ^13.0.2
   # Network connectivity
   connectivity_plus: ^6.1.1
+  # Real-time edge detection
+  edge_detection_scan: ^0.0.1
+  # OCR text recognition
+  google_mlkit_text_recognition: ^0.15.1
+
 
 dev_dependencies:
   flutter_test:

@@ -9,6 +9,7 @@ import '../providers/app_state.dart';
 import '../services/export_service.dart';
 import '../services/gps_service.dart';
 import '../services/image_processor.dart';
+import '../features/scanner/providers/smart_scanner_service.dart';
 import '../widgets/page_thumbnail.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -235,6 +236,45 @@ class _ScannerScreenState extends State<ScannerScreen> {
         icon = Icons.flash_on;
     }
     return Icon(icon, size: 20, color: Colors.grey);
+  }
+
+  Future<void> _smartScan() async {
+    // Open native smart scanner with auto edge detection
+    setState(() => _isProcessing = true);
+    try {
+      final result = await SmartScannerService.scanDocument();
+      if (result.success && result.imagePath != null) {
+        final dir = await getApplicationDocumentsDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final rawPath = '${dir.path}/smart_$timestamp.jpg';
+        await File(result.imagePath!).copy(rawPath);
+
+        // Process the image
+        try {
+          final processed = await ImageProcessor.autoEnhance(rawPath);
+          final gpsLoc = await GpsService.captureLocation();
+          setState(() {
+            _pages.add(_ScanPage(
+              path: processed.outputPath,
+              rawPath: rawPath,
+              filter: FilterPreset.enhanced,
+              gps: gpsLoc,
+            ));
+          });
+        } catch (e) {
+          setState(() {
+            _pages.add(_ScanPage(path: rawPath, rawPath: rawPath, filter: FilterPreset.original));
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Smart scan: $e')),
+        );
+      }
+    }
+    setState(() => _isProcessing = false);
   }
 
   void _clearAll() {
@@ -514,10 +554,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     );
                   }),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openCamera(),
-        icon: const Icon(Icons.add_a_photo),
-        label: const Text('Add Page'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'smart_scan',
+            onPressed: _smartScan,
+            tooltip: 'Smart Scan — auto-detect edges',
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            child: const Icon(Icons.auto_fix_high, color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.extended(
+            heroTag: 'add_page',
+            onPressed: () => _openCamera(),
+            icon: const Icon(Icons.add_a_photo),
+            label: const Text('Add Page'),
+          ),
+        ],
       ),
     );
   }

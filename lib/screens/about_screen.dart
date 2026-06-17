@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_state.dart';
+import '../features/cloud_backup/screens/cloud_backup_screen.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -75,6 +76,18 @@ class AboutScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+
+          const SizedBox(height: 24),
+          _SectionLabel('Data'),
+          _LinkTile(
+            icon: Icons.cloud,
+            color: const Color(0xFF4285F4),
+            title: 'Cloud Backup',
+            subtitle: 'Google Drive — backup your documents',
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const CloudBackupScreen(),
+            )),
           ),
 
           const SizedBox(height: 24),

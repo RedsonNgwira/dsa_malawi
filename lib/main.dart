@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'core/theme/app_theme.dart';
 import 'providers/app_state.dart';
 import 'services/connectivity_service.dart';
+import 'services/cloud_backup_service.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
@@ -15,6 +16,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..initialize()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()..initialize()),
+        ChangeNotifierProvider(create: (_) => CloudBackupService()),
       ],
       child: const DSAApp(),
     ),
@@ -27,28 +29,13 @@ class DSAApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    const seedColor = Color(0xFF1A6B3C); // Malawi green
 
     return MaterialApp(
       title: 'DSA Malawi',
       debugShowCheckedModeBanner: false,
       themeMode: appState.initialized ? appState.themeMode : ThemeMode.system,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.light,
-        ),
-        textTheme: GoogleFonts.interTextTheme(),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
       home: const HomeScreen(),
     );
   }
@@ -103,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      // Connectivity status banner at bottom
       bottomSheet: connectivity.initialized && !connectivity.isOnline
           ? Container(
               width: double.infinity,

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import 'crop_tool_screen.dart';
 import '../../../providers/app_state.dart';
 import '../../../services/export_service.dart';
 import '../../../services/gps_service.dart';
@@ -327,28 +328,59 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
     );
   }
 
+  void _reorderPages(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final page = _pages.removeAt(oldIndex);
+      _pages.insert(newIndex, page);
+    });
+  }
+
+  Future<void> _openCropTool(int index) async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => CropToolScreen(imagePath: _pages[index].path)),
+    );
+    if (result != null) {
+      final oldPath = _pages[index].path;
+      setState(() {
+        _pages[index] = _ScanPage(
+          path: result,
+          rawPath: _pages[index].rawPath,
+          filter: _pages[index].filter,
+          gps: _pages[index].gps,
+        );
+      });
+      if (oldPath != _pages[index].rawPath) {
+        File(oldPath).deleteSync(recursive: true);
+      }
+    }
+  }
+
   Widget _buildGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(AppTheme.md),
+    return ReorderableGridView(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: AppTheme.sm,
         mainAxisSpacing: AppTheme.sm,
         childAspectRatio: 0.72,
       ),
-      itemCount: _pages.length,
-      itemBuilder: (_, i) {
+      padding: const EdgeInsets.all(AppTheme.md),
+      children: List.generate(_pages.length, (i) {
         final page = _pages[i];
         return PageThumbnail(
+          key: ValueKey(page.path),
           imagePath: page.path,
           pageNumber: i + 1,
           filterLabel: page.filter != FilterPreset.enhanced ? page.filter.name : null,
           onRecapture: () => _openCamera(recaptureIndex: i),
           onDelete: () => _deletePage(i),
           onFilter: () => _showFilterDialog(i),
+          onCrop: () => _openCropTool(i),
           gpsLabel: page.hasGps ? '📍' : null,
         );
-      },
+      }),
+      onReorder: _reorderPages,
     );
   }
 
@@ -648,5 +680,103 @@ class _LiveDocumentBorder extends CustomPainter {
       if (old.corners[i] != corners[i]) return true;
     }
     return false;
+  }
+}
+
+/// Reorderable grid wrapper for drag-to-reorder pages.
+class ReorderableGridView extends StatelessWidget {
+  final EdgeInsetsGeometry padding;
+  final SliverGridDelegate gridDelegate;
+  final ReorderCallback onReorder;
+  final List<Widget> children;
+
+  const ReorderableGridView({
+    super.key,
+    required this.gridDelegate,
+    required this.onReorder,
+    required this.children,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ReorderableBuilder(
+      onReorder: onReorder,
+      children: children,
+      builder: (items, handleBuilder) {
+        return GridView.builder(
+          padding: padding,
+          gridDelegate: gridDelegate,
+          itemCount: items.length,
+          itemBuilder: (_, i) => handleBuilder(items[i], i),
+        );
+      },
+    );
+  }
+}
+
+class ReorderableBuilder extends StatefulWidget {
+  final List<Widget> children;
+  final ReorderCallback onReorder;
+  final Widget Function(List<Widget> children, Widget Function(Widget child, int index) handleBuilder) builder;
+
+  const ReorderableBuilder({
+    super.key,
+    required this.children,
+    required this.onReorder,
+    required this.builder,
+  });
+
+  @override
+  State<ReorderableBuilder> createState() => _ReorderableBuilderState();
+}
+
+class _ReorderableBuilderState extends State<ReorderableBuilder> {
+  List<Widget> _items = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.from(widget.children);
+  }
+
+  @override
+  void didUpdateWidget(ReorderableBuilder old) {
+    super.didUpdateWidget(old);
+    if (old.children != widget.children) {
+      _items = List.from(widget.children);
+    }
+  }
+
+  Widget _buildHandle(Widget child, int index) {
+    return LongPressDraggable(
+      key: child.key,
+      data: index,
+      feedback: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(width: 120, height: 160, child: Opacity(opacity: 0.8, child: child)),
+      ),
+      childWhenDragging: Opacity(opacity: 0.4, child: child),
+      child: DragTarget<int>(
+        onAcceptWithDetails: (details) {
+          final draggedIndex = details.data;
+          final targetIndex = index;
+          if (draggedIndex != targetIndex) {
+            setState(() {
+              final moved = _items.removeAt(draggedIndex);
+              _items.insert(targetIndex, moved);
+            });
+            widget.onReorder(draggedIndex, targetIndex);
+          }
+        },
+        builder: (_, candidate, rejected) => child,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(_items, _buildHandle);
   }
 }

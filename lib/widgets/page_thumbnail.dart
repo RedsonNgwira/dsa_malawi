@@ -7,6 +7,7 @@ class PageThumbnail extends StatelessWidget {
   final VoidCallback onRecapture;
   final VoidCallback onDelete;
   final VoidCallback? onFilter;
+  final VoidCallback? onCrop;
   final String? filterLabel;
   final String? gpsLabel;
 
@@ -17,6 +18,7 @@ class PageThumbnail extends StatelessWidget {
     required this.onRecapture,
     required this.onDelete,
     this.onFilter,
+    this.onCrop,
     this.filterLabel,
     this.gpsLabel,
   });
@@ -103,6 +105,12 @@ class PageThumbnail extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onCrop != null)
+              ListTile(
+                leading: const Icon(Icons.crop),
+                title: Text('Crop page $pageNumber'),
+                onTap: () { Navigator.pop(context); onCrop!(); },
+              ),
             if (onFilter != null)
               ListTile(
                 leading: const Icon(Icons.auto_fix_high),

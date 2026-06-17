@@ -366,6 +366,7 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
         childAspectRatio: 0.72,
       ),
       padding: const EdgeInsets.all(AppTheme.md),
+      onReorder: _reorderPages,
       children: List.generate(_pages.length, (i) {
         final page = _pages[i];
         return PageThumbnail(
@@ -380,7 +381,6 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
           gpsLabel: page.hasGps ? '📍' : null,
         );
       }),
-      onReorder: _reorderPages,
     );
   }
 

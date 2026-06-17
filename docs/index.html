@@ -162,7 +162,13 @@
     }
 
     function downloadUrl(tag, abi) {
-      return `${BASE_URL}/${tag}/app-${abi}-release.apk`;
+      if (abi === 'release') return `${BASE_URL}/${tag}/DSA Malawi.apk`;
+      return `${BASE_URL}/${tag}/DSA Malawi - ${abi}.apk`;
+    }
+
+    function fileName(abi) {
+      if (abi === 'release') return 'DSA Malawi.apk';
+      return `DSA Malawi - ${abi}.apk`;
     }
 
     async function main() {

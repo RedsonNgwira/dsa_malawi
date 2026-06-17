@@ -234,6 +234,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
         icon = Icons.blur_on;
       case FilterPreset.lightweight:
         icon = Icons.flash_on;
+      case FilterPreset.inverted:
+        icon = Icons.invert_colors;
+      case FilterPreset.sepia:
+        icon = Icons.color_lens;
+      case FilterPreset.magicColor:
+        icon = Icons.auto_awesome;
     }
     return Icon(icon, size: 20, color: Colors.grey);
   }

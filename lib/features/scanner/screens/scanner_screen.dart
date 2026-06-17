@@ -30,6 +30,9 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
   List<Offset>? _detectedCorners;
   int _frameCount = 0;
   bool _isDetecting = false;
+  int _stableFrames = 0;
+  bool _autoCaptureTriggered = false;
+  static const int _autoCaptureThreshold = 8; // ~400ms stable (8 frames × 10th frame sampling)
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -116,8 +119,21 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
           Offset(minX * scaleX, maxY * scaleY),
         ];
         if (mounted) setState(() => _detectedCorners = newCorners);
+
+        // Auto-capture: increment stable counter
+        if (!_autoCaptureTriggered && !_isProcessing) {
+          _stableFrames++;
+          if (_stableFrames >= _autoCaptureThreshold) {
+            _autoCaptureTriggered = true;
+            _capture();
+          }
+        }
       } else if (mounted) {
-        setState(() => _detectedCorners = null);
+        setState(() {
+          _detectedCorners = null;
+          _stableFrames = 0;
+          _autoCaptureTriggered = false;
+        });
       }
     } catch (_) {}
     _isDetecting = false;
@@ -417,21 +433,45 @@ class _ScannerScreenState extends State<ScannerScreen> with TickerProviderStateM
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTap: _capture,
-              child: Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.95),
+            // Auto-capture countdown ring
+            SizedBox(
+              width: 72, height: 72,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (_stableFrames > 0 && _stableFrames < _autoCaptureThreshold)
+                    CircularProgressIndicator(
+                      value: _stableFrames / _autoCaptureThreshold,
+                      strokeWidth: 3,
+                      color: Colors.amberAccent,
+                      backgroundColor: Colors.white24,
+                    ),
+                  GestureDetector(
+                    onTap: _capture,
+                    child: Container(
+                      width: 62, height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _detectedCorners != null ? Colors.amberAccent : Colors.white,
+                          width: _detectedCorners != null ? 5 : 4,
+                        ),
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _detectedCorners != null
+                              ? Colors.amberAccent.withValues(alpha: 0.9)
+                              : Colors.white.withValues(alpha: 0.95),
+                        ),
+                        child: _detectedCorners != null
+                            ? const Icon(Icons.auto_awesome, color: Colors.black87, size: 22)
+                            : null,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],

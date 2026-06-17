@@ -22,6 +22,7 @@ enum FilterPreset {
   inverted,
   sepia,
   magicColor,
+  photocopy,
 }
 
 /// Result of a processing operation.
@@ -116,6 +117,8 @@ class ImageProcessor {
         processed = FilterTool.apply(original, 'sepia'); break;
       case FilterPreset.magicColor:
         processed = FilterTool.apply(original, 'magicColor'); break;
+      case FilterPreset.photocopy:
+        processed = FilterTool.apply(original, 'photocopy'); break;
     }
 
     final dir = Directory(sourcePath).parent;

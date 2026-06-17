@@ -240,6 +240,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
         icon = Icons.color_lens;
       case FilterPreset.magicColor:
         icon = Icons.auto_awesome;
+      case FilterPreset.photocopy:
+        icon = Icons.content_copy;
     }
     return Icon(icon, size: 20, color: Colors.grey);
   }

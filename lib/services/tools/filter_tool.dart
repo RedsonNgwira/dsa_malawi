@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:image/image.dart' as img;
 
 /// Tool for applying filter presets to scanned images.
 /// Handles grayscale, black & white, color modes.
+/// Now with adaptive thresholding (Otsu + Sauvola) for real scanner-quality output.
 class FilterTool {
   /// Apply a named filter preset.
   static img.Image apply(img.Image src, String preset) {
@@ -9,7 +11,7 @@ class FilterTool {
       case 'grayscale':
         return img.grayscale(src);
       case 'blackAndWhite':
-        return _binaryThreshold(src, 128);
+        return _adaptiveThresholdSauvola(src);
       case 'highContrast':
         return img.adjustColor(src, contrast: 2.0, brightness: 0.05);
       case 'enhanced':
@@ -24,6 +26,8 @@ class FilterTool {
         return _sepia(src);
       case 'magicColor':
         return _magicColor(src);
+      case 'photocopy':
+        return _photocopy(src);
       default:
         return src;
     }
@@ -33,7 +37,7 @@ class FilterTool {
   static Map<String, String> get presets => {
     'original': 'Original',
     'grayscale': 'Grayscale',
-    'blackAndWhite': 'Black & White',
+    'blackAndWhite': 'Black & White (Smart)',
     'highContrast': 'High Contrast',
     'enhanced': 'Enhanced',
     'autoLevel': 'Auto Level',
@@ -41,9 +45,9 @@ class FilterTool {
     'inverted': 'Inverted',
     'sepia': 'Sepia',
     'magicColor': 'Magic Color',
+    'photocopy': 'Photocopy',
   };
 
-  /// Available filter icons.
   static Map<String, String> get presetIcons => {
     'original': 'image',
     'grayscale': 'blur_on',
@@ -55,21 +59,104 @@ class FilterTool {
     'inverted': 'invert_colors',
     'sepia': 'color_lens',
     'magicColor': 'auto_awesome',
+    'photocopy': 'content_copy',
   };
 
-  // ── Internal filter implementations ──
+  // ── Adaptive Thresholding ──
 
-  static img.Image _binaryThreshold(img.Image src, int threshold) {
+  /// Sauvola's adaptive threshold: per-pixel local neighborhood analysis.
+  /// This is what makes text look crisp even on uneven lighting.
+  static img.Image _adaptiveThresholdSauvola(img.Image src) {
     final gray = img.grayscale(src);
+    const windowSize = 15; // Must be odd
+    const halfWindow = windowSize ~/ 2;
+    const k = 0.2; // Sauvola parameter
+    const r = 128.0; // Dynamic range of standard deviation
+
+    // Compute integral image for fast local mean and std calculation
+    final integral = _computeIntegralImage(gray);
+    final integralSq = _computeIntegralSquared(gray);
+
     final result = img.Image(width: gray.width, height: gray.height, numChannels: 3);
-    for (var y = 0; y < gray.height; y++) {
-      for (var x = 0; x < gray.width; x++) {
-        final l = gray.getPixel(x, y).luminance;
-        result.setPixelRgba(x, y, l > threshold ? 255 : 0, l > threshold ? 255 : 0, l > threshold ? 255 : 0, 255);
+    final w = gray.width;
+    final h = gray.height;
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        // Define local window
+        final x1 = max(0, x - halfWindow);
+        final y1 = max(0, y - halfWindow);
+        final x2 = min(w - 1, x + halfWindow);
+        final y2 = min(h - 1, y + halfWindow);
+        final n = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+        // Local mean via integral image
+        final mean = _integralSum(integral, x1, y1, x2, y2) / n;
+
+        // Local variance via integral squared
+        final variance = (_integralSum(integralSq, x1, y1, x2, y2) / n) - (mean * mean);
+        final std = sqrt(max(0.0, variance));
+
+        // Sauvola threshold
+        final threshold = mean * (1.0 + k * ((std / r) - 1.0));
+        final luminance = gray.getPixel(x, y).luminance;
+
+        if (luminance > threshold) {
+          result.setPixelRgba(x, y, 255, 255, 255, 255); // White
+        } else {
+          result.setPixelRgba(x, y, 0, 0, 0, 255); // Black
+        }
       }
     }
     return result;
   }
+
+  /// Photocopy mode: Sauvola threshold + pure white background.
+  static img.Image _photocopy(img.Image src) {
+    var result = _adaptiveThresholdSauvola(src);
+    // Ensure pure white background
+    for (final p in result) {
+      if (p.r > 200) {
+        p.setRgba(255, 255, 255, 255);
+      }
+    }
+    return result;
+  }
+
+  // ── Integral Image Helpers ──
+
+  static List<List<double>> _computeIntegralImage(img.Image gray) {
+    final w = gray.width;
+    final h = gray.height;
+    final integral = List.generate(h + 1, (_) => List.filled(w + 1, 0.0));
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        integral[y + 1][x + 1] = gray.getPixel(x, y).luminance +
+            integral[y][x + 1] + integral[y + 1][x] - integral[y][x];
+      }
+    }
+    return integral;
+  }
+
+  static List<List<double>> _computeIntegralSquared(img.Image gray) {
+    final w = gray.width;
+    final h = gray.height;
+    final integral = List.generate(h + 1, (_) => List.filled(w + 1, 0.0));
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final val = gray.getPixel(x, y).luminance;
+        integral[y + 1][x + 1] = val * val +
+            integral[y][x + 1] + integral[y + 1][x] - integral[y][x];
+      }
+    }
+    return integral;
+  }
+
+  static double _integralSum(List<List<double>> integral, int x1, int y1, int x2, int y2) {
+    return integral[y2 + 1][x2 + 1] - integral[y1][x2 + 1] - integral[y2 + 1][x1] + integral[y1][x1];
+  }
+
+  // ── Legacy filters ──
 
   static img.Image _autoLevel(img.Image src) {
     int minL = 255, maxL = 0;
@@ -138,9 +225,7 @@ class FilterTool {
   }
 
   static img.Image _magicColor(img.Image src) {
-    // CamScanner-style magic color: boost saturation + contrast
     var result = img.adjustColor(src, contrast: 1.4);
-    // Slight saturation boost by emphasizing color channels
     result = img.adjustColor(result, contrast: 0.9, brightness: 0.02);
     return result;
   }

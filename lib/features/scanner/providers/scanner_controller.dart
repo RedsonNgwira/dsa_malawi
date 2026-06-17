@@ -237,7 +237,7 @@ class ScannerController extends ChangeNotifier {
   }
 
   void clearAll() {
-    for (var p in _pages) p.deleteFiles();
+    for (final p in _pages) { p.deleteFiles(); }
     _pages.clear();
     notifyListeners();
   }

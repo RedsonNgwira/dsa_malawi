@@ -47,6 +47,7 @@ dependencies:
   edge_detection_scan: ^0.0.1
   # OCR text recognition
   google_mlkit_text_recognition: ^0.15.1
+  get_it: ^9.2.1
 
 
 dev_dependencies:

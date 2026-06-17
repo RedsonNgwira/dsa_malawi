@@ -7,8 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../services/image_processor.dart';
 import '../../../services/gps_service.dart';
-import '../../../providers/app_state.dart';
 import '../../../services/export_service.dart';
+import '../../../providers/app_state.dart';
+import '../../../core/di/service_locator.dart';
 import '../providers/smart_scanner_service.dart';
 import '../screens/scan_page_model.dart';
 
@@ -155,7 +156,7 @@ class ScannerController extends ChangeNotifier {
   }
 
   Future<void> export(BuildContext ctx, String name, bool pdf, bool docx) async {
-    final svc = ExportService(); final appState = Provider.of<AppState>(ctx, listen: false);
+    final svc = sl<ExportService>(); final appState = Provider.of<AppState>(ctx, listen: false);
     final paths = _pages.map((p) => p.path).toList();
     try {
       if (pdf) { final p = await svc.exportPdf(paths, name); await appState.addExportRecord({'file_name': '$name.pdf', 'file_path': p, 'file_type': 'PDF', 'page_count': _pages.length, 'file_size': File(p).lengthSync()}); }

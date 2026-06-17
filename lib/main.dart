@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/di/service_locator.dart';
 import 'providers/app_state.dart';
 import 'services/connectivity_service.dart';
 import 'services/cloud_backup_service.dart';
@@ -10,8 +11,9 @@ import 'screens/loan_calc_screen.dart';
 import 'screens/documents_screen.dart';
 import 'screens/about_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initDependencies();
   runApp(
     MultiProvider(
       providers: [

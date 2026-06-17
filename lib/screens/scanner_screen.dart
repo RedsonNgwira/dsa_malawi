@@ -1,17 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state.dart';
-import '../services/export_service.dart';
-import '../services/gps_service.dart';
 import '../services/image_processor.dart';
-import '../features/scanner/providers/smart_scanner_service.dart';
 import '../widgets/page_thumbnail.dart';
+import '../core/widgets/reorderable_grid.dart';
+import '../features/scanner/providers/scanner_controller.dart';
+import '../features/scanner/screens/scan_page_model.dart';
+import '../features/scanner/widgets/camera_view.dart';
 
+/// Scanner screen — the main interface for capturing and managing documents.
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
 
@@ -19,720 +15,291 @@ class ScannerScreen extends StatefulWidget {
   State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends State<ScannerScreen> {
-  CameraController? _controller;
-  final List<_ScanPage> _pages = [];
-  bool _cameraReady = false;
-  bool _showCamera = false;
-  int? _recaptureIndex;
-  bool _isProcessing = false;
+class _ScannerScreenState extends State<ScannerScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
+  late final TextEditingController _searchCtrl;
+  bool _showSearch = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-  }
-
-  Future<void> _initCamera() async {
-    final status = await Permission.camera.request();
-    if (!status.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera permission required')),
-        );
-      }
-      return;
-    }
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) return;
-    _controller = CameraController(cameras.first, ResolutionPreset.high);
-    await _controller!.initialize();
-    if (mounted) setState(() => _cameraReady = true);
-  }
-
-  Future<void> _openCamera({int? recaptureIndex}) async {
-    _recaptureIndex = recaptureIndex;
-    if (!_cameraReady) await _initCamera();
-    if (mounted) setState(() => _showCamera = true);
-  }
-
-  Future<void> _capture() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    final dir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final rawPath = '${dir.path}/raw_$timestamp.jpg';
-    final file = await _controller!.takePicture();
-    await File(file.path).copy(rawPath);
-
-    // Process the image (auto-crop + enhance)
-    setState(() => _isProcessing = true);
-
-    // Capture GPS location simultaneously
-    final gpsFuture = GpsService.captureLocation();
-
-    try {
-      final processed = await ImageProcessor.autoEnhance(rawPath);
-      final gpsLoc = await gpsFuture;
-      final page = _ScanPage(
-        path: processed.outputPath,
-        rawPath: rawPath,
-        filter: FilterPreset.enhanced,
-        gps: gpsLoc,
-      );
-
-      setState(() {
-        if (_recaptureIndex != null) {
-          final old = _pages[_recaptureIndex!];
-          File(old.path).deleteSync(recursive: true);
-          if (old.rawPath != old.path) File(old.rawPath).deleteSync(recursive: true);
-          _pages[_recaptureIndex!] = page;
-          _recaptureIndex = null;
-        } else {
-          _pages.add(page);
-        }
-        _showCamera = false;
-        _isProcessing = false;
-      });
-    } catch (e) {
-      final gpsLoc = await gpsFuture;
-      final page = _ScanPage(
-        path: rawPath, rawPath: rawPath,
-        filter: FilterPreset.original,
-        gps: gpsLoc,
-      );
-      setState(() {
-        if (_recaptureIndex != null) {
-          final old = _pages[_recaptureIndex!];
-          File(old.path).deleteSync(recursive: true);
-          _pages[_recaptureIndex!] = page;
-          _recaptureIndex = null;
-        } else {
-          _pages.add(page);
-        }
-        _showCamera = false;
-        _isProcessing = false;
-      });
-    }
-  }
-
-  Future<void> _pickFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
-    if (pickedFiles.isEmpty) return;
-
-    setState(() => _isProcessing = true);
-    final dir = await getApplicationDocumentsDirectory();
-
-    // Capture one GPS location for the batch
-    final gpsLoc = await GpsService.captureLocation();
-
-    for (final picked in pickedFiles) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final rawPath = '${dir.path}/gallery_$timestamp.jpg';
-      await File(picked.path).copy(rawPath);
-
-      try {
-        final processed = await ImageProcessor.autoEnhance(rawPath);
-        _pages.add(_ScanPage(
-          path: processed.outputPath,
-          rawPath: rawPath,
-          filter: FilterPreset.enhanced,
-          gps: gpsLoc,
-        ));
-      } catch (e) {
-        _pages.add(_ScanPage(
-          path: rawPath, rawPath: rawPath,
-          filter: FilterPreset.original,
-          gps: gpsLoc,
-        ));
-      }
-    }
-
-    setState(() => _isProcessing = false);
-  }
-
-  void _deletePage(int index) {
-    final page = _pages[index];
-    File(page.path).deleteSync(recursive: true);
-    if (page.rawPath != page.path) File(page.rawPath).deleteSync(recursive: true);
-    setState(() => _pages.removeAt(index));
-  }
-
-  Future<void> _reorderPages(int oldIndex, int newIndex) {
-    setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
-      final page = _pages.removeAt(oldIndex);
-      _pages.insert(newIndex, page);
-    });
-    return Future.value();
-  }
-
-  void _showFilterDialog(int index) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: FilterPreset.values.map((filter) {
-            final name = filter.name;
-            final displayName = name[0].toUpperCase() + name.substring(1);
-            final isCurrent = _pages[index].filter == filter;
-            return ListTile(
-              leading: Icon(
-                isCurrent ? Icons.check_circle : Icons.circle_outlined,
-                color: isCurrent ? Colors.green : null,
-              ),
-              title: Text(displayName),
-              trailing: _filterPreviewIcon(filter),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final page = _pages[index];
-                setState(() => _isProcessing = true);
-                try {
-                  final processed = await ImageProcessor.applyFilter(page.path, filter);
-                  // Keep the raw path, update the display path and filter
-                  final oldPath = page.path;
-                  _pages[index] = _ScanPage(
-                    path: processed.outputPath,
-                    rawPath: page.rawPath,
-                    filter: filter,
-                  );
-                  if (oldPath != page.rawPath) {
-                    File(oldPath).deleteSync(recursive: true);
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Filter failed: $e')),
-                    );
-                  }
-                }
-                setState(() => _isProcessing = false);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _filterPreviewIcon(FilterPreset filter) {
-    IconData icon;
-    switch (filter) {
-      case FilterPreset.original:
-        icon = Icons.image;
-      case FilterPreset.grayscale:
-        icon = Icons.blur_on;
-      case FilterPreset.blackAndWhite:
-        icon = Icons.brightness_2;
-      case FilterPreset.highContrast:
-        icon = Icons.contrast;
-      case FilterPreset.enhanced:
-        icon = Icons.auto_fix_high;
-      case FilterPreset.autoLevel:
-        icon = Icons.exposure;
-      case FilterPreset.sharpen:
-        icon = Icons.blur_on;
-      case FilterPreset.lightweight:
-        icon = Icons.flash_on;
-      case FilterPreset.inverted:
-        icon = Icons.invert_colors;
-      case FilterPreset.sepia:
-        icon = Icons.color_lens;
-      case FilterPreset.magicColor:
-        icon = Icons.auto_awesome;
-      case FilterPreset.photocopy:
-        icon = Icons.content_copy;
-    }
-    return Icon(icon, size: 20, color: Colors.grey);
-  }
-
-  Future<void> _smartScan() async {
-    // Open native smart scanner with auto edge detection
-    setState(() => _isProcessing = true);
-    try {
-      final result = await SmartScannerService.scanDocument();
-      if (result.success && result.imagePath != null) {
-        final dir = await getApplicationDocumentsDirectory();
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final rawPath = '${dir.path}/smart_$timestamp.jpg';
-        await File(result.imagePath!).copy(rawPath);
-
-        // Process the image
-        try {
-          final processed = await ImageProcessor.autoEnhance(rawPath);
-          final gpsLoc = await GpsService.captureLocation();
-          setState(() {
-            _pages.add(_ScanPage(
-              path: processed.outputPath,
-              rawPath: rawPath,
-              filter: FilterPreset.enhanced,
-              gps: gpsLoc,
-            ));
-          });
-        } catch (e) {
-          setState(() {
-            _pages.add(_ScanPage(path: rawPath, rawPath: rawPath, filter: FilterPreset.original));
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Smart scan: $e')),
-        );
-      }
-    }
-    setState(() => _isProcessing = false);
-  }
-
-  void _clearAll() {
-    for (var p in _pages) {
-      File(p.path).deleteSync(recursive: true);
-      if (p.rawPath != p.path) File(p.rawPath).deleteSync(recursive: true);
-    }
-    setState(() => _pages.clear());
-  }
-
-  Future<void> _showExportDialog() async {
-    if (_pages.isEmpty) return;
-    final nameController = TextEditingController(
-      text: 'Document_${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}',
-    );
-    bool exportPdf = true;
-    bool exportDocx = false;
-    bool autoEnhance = true;
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          title: const Text('Export Document'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'File name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${_pages.length} page(s)',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                title: const Text('PDF'),
-                value: exportPdf,
-                onChanged: (v) => setS(() => exportPdf = v!),
-              ),
-              CheckboxListTile(
-                title: const Text('Word (.docx)'),
-                value: exportDocx,
-                onChanged: (v) => setS(() => exportDocx = v!),
-              ),
-              CheckboxListTile(
-                title: const Text('Auto-enhance images'),
-                subtitle: const Text('Crop, straighten, enhance contrast'),
-                value: autoEnhance,
-                onChanged: (v) => setS(() => autoEnhance = v!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await _export(nameController.text.trim(), exportPdf, exportDocx, autoEnhance);
-              },
-              child: const Text('Export'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _export(String name, bool pdf, bool docx, bool enhance) async {
-    final svc = ExportService();
-    final appState = context.read<AppState>();
-    final exported = <String>[];
-
-    // Show progress
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Exporting...'), duration: Duration(seconds: 30)),
-      );
-    }
-
-    try {
-      final paths = _pages.map((p) => p.path).toList();
-
-      if (pdf) {
-        final path = await svc.exportPdf(paths, name);
-        exported.add('PDF: $path');
-        final file = File(path);
-        await appState.addExportRecord({
-          'file_name': '$name.pdf',
-          'file_path': path,
-          'file_type': 'PDF',
-          'page_count': _pages.length,
-          'file_size': file.lengthSync(),
-        });
-      }
-      if (docx) {
-        final path = await svc.exportDocx(paths, name);
-        exported.add('Word: $path');
-        final file = File(path);
-        await appState.addExportRecord({
-          'file_name': '$name.docx',
-          'file_path': path,
-          'file_type': 'DOCX',
-          'page_count': _pages.length,
-          'file_size': file.lengthSync(),
-        });
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Saved: ${exported.join(', ')}')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
-      }
-    }
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnim =
+        Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(
+      parent: _pulseCtrl,
+      curve: Curves.easeInOut,
+    ));
+    _searchCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _pulseCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_showCamera) return _buildCameraView();
-    return _buildScannerView();
+  List<ScanPageDto> _filtered(List<ScanPageDto> pages) {
+    if (_searchQuery.isEmpty) return pages;
+    final q = _searchQuery.toLowerCase();
+    return pages.where((p) => p.path.toLowerCase().contains(q)).toList();
   }
 
-  Widget _buildCameraView() {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_cameraReady && _controller != null)
-            CameraPreview(_controller!)
-          else
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-          // Corner guides
-          Positioned.fill(
-            child: CustomPaint(painter: _CornerPainter()),
-          ),
-          if (_isProcessing)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black54,
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16),
-                      Text('Processing image...', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          Positioned(
-            bottom: 40,
-            left: 0, right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
-                  onPressed: () => setState(() {
-                    _showCamera = false;
-                    _recaptureIndex = null;
-                  }),
-                ),
-                GestureDetector(
-                  onTap: _isProcessing ? null : _capture,
-                  child: Container(
-                    width: 70, height: 70,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                      color: Colors.white24,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 50),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 50, left: 16,
-            child: Text(
-              _recaptureIndex != null
-                  ? 'Recapture page ${_recaptureIndex! + 1}'
-                  : 'Page ${_pages.length + 1}',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
+  void _showExportDialog(BuildContext context, ScannerController ctrl) {
+    final nameCtrl = TextEditingController(
+      text: 'Document_${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}',
+    );
+    bool pdf = true, docx = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text('Export'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'File name')),
+          const SizedBox(height: 8),
+          Text('${ctrl.pages.length} page(s)',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          const SizedBox(height: 8),
+          CheckboxListTile(title: const Text('PDF'), value: pdf,
+              onChanged: (v) => pdf = v!, contentPadding: EdgeInsets.zero),
+          CheckboxListTile(title: const Text('Word (.docx)'), value: docx,
+              onChanged: (v) => docx = v!, contentPadding: EdgeInsets.zero),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(onPressed: () {
+            Navigator.pop(ctx);
+            ctrl.export(context, nameCtrl.text.trim(), pdf, docx);
+          }, child: const Text('Export')),
         ],
       ),
     );
   }
 
-  Widget _buildScannerView() {
+  void _showFilterSheet(BuildContext context, ScannerController ctrl, int index) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text('Filter',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: FilterPreset.values.map((f) {
+                    final isCurrent = ctrl.pages[index].filter == f;
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                        isCurrent ? Icons.check_circle : Icons.circle_outlined,
+                        color: isCurrent ? Theme.of(context).colorScheme.primary : null,
+                        size: 20,
+                      ),
+                      title: Text(_filterLabel(f),
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isCurrent ? FontWeight.w600 : null)),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        ctrl.applyFilter(index, f);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _filterLabel(FilterPreset f) {
+    return f.name[0].toUpperCase() + f.name.substring(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = context.watch<ScannerController>();
+    final scheme = Theme.of(context).colorScheme;
+
+    if (ctrl.showCamera) return const CameraView();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Document Scanner'),
-        actions: [
-          if (_pages.isNotEmpty) ...[
-            IconButton(
-              icon: const Icon(Icons.photo_library_outlined),
-              tooltip: 'Import from gallery',
-              onPressed: _pickFromGallery,
-            ),
-            IconButton(
-              icon: const Icon(Icons.ios_share),
-              tooltip: 'Export',
-              onPressed: _showExportDialog,
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Clear all',
-              onPressed: () {
-                _clearAll();
-              },
-            ),
-          ],
-        ],
-      ),
-      body: _pages.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.document_scanner_outlined, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text('No pages yet', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Text('Tap + to capture or import from gallery',
-                      style: TextStyle(color: Colors.grey.shade400)),
-                ],
-              ),
-            )
-          : _isProcessing
-              ? const Center(child: CircularProgressIndicator())
-              : ReorderableGridView(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.75,
-                  ),
-                  onReorder: _reorderPages,
-                  children: List.generate(_pages.length, (i) {
-                    final page = _pages[i];
-                    return PageThumbnail(
-                      key: ValueKey(page.path),
-                      imagePath: page.path,
-                      pageNumber: i + 1,
-                      filterLabel: page.filter != FilterPreset.enhanced
-                          ? page.filter.name
-                          : null,
-                      onRecapture: () => _openCamera(recaptureIndex: i),
-                      onDelete: () => _deletePage(i),
-                      onFilter: () => _showFilterDialog(i),
-                    );
+        title: Text(_showSearch ? '' : 'Scanner',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 20)),
+        actions: ctrl.isEmpty
+            ? null
+            : [
+                IconButton(
+                  icon: Icon(_showSearch ? Icons.close : Icons.search),
+                  onPressed: () => setState(() {
+                    _showSearch = !_showSearch;
+                    if (!_showSearch) _searchQuery = '';
                   }),
                 ),
+                if (!_showSearch) ...[
+                  IconButton(
+                    icon: const Icon(Icons.photo_library_outlined),
+                    tooltip: 'Import',
+                    onPressed: ctrl.pickFromGallery,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: 'Export',
+                    onPressed: () => _showExportDialog(context, ctrl),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    tooltip: 'Clear all',
+                    onPressed: ctrl.clearAll,
+                  ),
+                ],
+              ],
+      ),
+      body: Column(
+        children: [
+          if (!ctrl.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Text(
+                    '${ctrl.pages.length} page${ctrl.pages.length > 1 ? 's' : ''}',
+                    style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 13),
+                  ),
+                  const Spacer(),
+                  if (_showSearch)
+                    SizedBox(
+                      width: 200,
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search pages...',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ctrl.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 90, height: 90,
+                          decoration: BoxDecoration(
+                            color: scheme.primaryContainer.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Icon(Icons.document_scanner_outlined,
+                              size: 42, color: scheme.primary.withValues(alpha: 0.6)),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('No pages yet',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Tap the scan button to capture\na document',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: scheme.onSurface.withValues(alpha: 0.5),
+                              height: 1.5),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async {},
+                    child: ReorderableGridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 0.72,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      onReorder: (o, n) => ctrl.reorderPages(o, n),
+                      children: _filtered(ctrl.pages).asMap().entries.map((e) {
+                        final i = e.key;
+                        final page = e.value;
+                        final idx = ctrl.pages.indexOf(page);
+                        return PageThumbnail(
+                          key: ValueKey(page.path),
+                          imagePath: page.path,
+                          pageNumber: i + 1,
+                          filterLabel: page.filter != FilterPreset.enhanced
+                              ? page.filter.name
+                              : null,
+                          onRecapture: () => ctrl.openCamera(recaptureIndex: idx),
+                          onDelete: () => ctrl.deletePage(idx),
+                          onFilter: () => _showFilterSheet(context, ctrl, idx),
+                          gpsLabel: page.hasGps ? '📍' : null,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton.small(
-            heroTag: 'smart_scan',
-            onPressed: _smartScan,
-            tooltip: 'Smart Scan — auto-detect edges',
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.auto_fix_high, color: Colors.white),
+          ScaleTransition(
+            scale: _pulseAnim,
+            child: FloatingActionButton(
+              heroTag: 'smart',
+              onPressed: ctrl.smartScan,
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              child: const Icon(Icons.auto_fix_high, size: 28),
+            ),
           ),
           const SizedBox(height: 8),
-          FloatingActionButton.extended(
-            heroTag: 'add_page',
-            onPressed: () => _openCamera(),
-            icon: const Icon(Icons.add_a_photo),
-            label: const Text('Add Page'),
+          FloatingActionButton.small(
+            heroTag: 'capture',
+            onPressed: () => ctrl.openCamera(),
+            backgroundColor: scheme.surfaceContainerHighest,
+            foregroundColor: scheme.onSurface,
+            child: const Icon(Icons.camera_alt_outlined, size: 20),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.small(
+            heroTag: 'gallery',
+            onPressed: ctrl.pickFromGallery,
+            backgroundColor: scheme.surfaceContainerHighest,
+            foregroundColor: scheme.onSurface,
+            child: const Icon(Icons.photo_outlined, size: 20),
           ),
         ],
       ),
     );
-  }
-}
-
-/// Internal model for a scanned page with its filter state and GPS data.
-class _ScanPage {
-  final String path;
-  final String rawPath;
-  final FilterPreset filter;
-  final GpsLocation? gps;
-
-  _ScanPage({
-    required this.path,
-    required this.rawPath,
-    required this.filter,
-    this.gps,
-  });
-
-  bool get hasGps => gps != null;
-  String get locationLabel => gps != null
-      ? '${gps!.latitude.toStringAsFixed(4)}, ${gps!.longitude.toStringAsFixed(4)}'
-      : '';
-}
-
-class _CornerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-    const len = 30.0;
-    const margin = 40.0;
-    final corners = [
-      [Offset(margin, margin), Offset(margin + len, margin), Offset(margin, margin + len)],
-      [Offset(size.width - margin, margin), Offset(size.width - margin - len, margin), Offset(size.width - margin, margin + len)],
-      [Offset(margin, size.height - margin), Offset(margin + len, size.height - margin), Offset(margin, size.height - margin - len)],
-      [Offset(size.width - margin, size.height - margin), Offset(size.width - margin - len, size.height - margin), Offset(size.width - margin, size.height - margin - len)],
-    ];
-    for (final c in corners) {
-      canvas.drawLine(c[0], c[1], paint);
-      canvas.drawLine(c[0], c[2], paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
-}
-
-/// Wrapper widget that delegates to ReorderableGridView's builder.
-class ReorderableGridView extends StatelessWidget {
-  final EdgeInsetsGeometry padding;
-  final SliverGridDelegate gridDelegate;
-  final ReorderCallback onReorder;
-  final List<Widget> children;
-
-  const ReorderableGridView({
-    super.key,
-    required this.gridDelegate,
-    required this.onReorder,
-    required this.children,
-    this.padding = EdgeInsets.zero,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final listChildren = children;
-    return ReorderableBuilder(
-      onReorder: onReorder,
-      children: listChildren,
-      builder: (items, handleBuilder) {
-        return GridView.builder(
-          padding: padding,
-          gridDelegate: gridDelegate,
-          itemCount: items.length,
-          itemBuilder: (_, i) => handleBuilder(items[i], i),
-        );
-      },
-    );
-  }
-}
-
-/// A simple reorderable builder that wraps children for drag-to-reorder.
-class ReorderableBuilder extends StatefulWidget {
-  final List<Widget> children;
-  final ReorderCallback onReorder;
-  final Widget Function(List<Widget> children, Widget Function(Widget child, int index) handleBuilder) builder;
-
-  const ReorderableBuilder({
-    super.key,
-    required this.children,
-    required this.onReorder,
-    required this.builder,
-  });
-
-  @override
-  State<ReorderableBuilder> createState() => _ReorderableBuilderState();
-}
-
-class _ReorderableBuilderState extends State<ReorderableBuilder> {
-  List<Widget> _children = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _children = List.from(widget.children);
-  }
-
-  @override
-  void didUpdateWidget(ReorderableBuilder oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.children != widget.children) {
-      _children = List.from(widget.children);
-    }
-  }
-
-  Widget _buildHandle(Widget child, int index) {
-    return LongPressDraggable(
-      key: child.key,
-      data: index,
-      feedback: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 120,
-          height: 160,
-          child: Opacity(opacity: 0.8, child: child),
-        ),
-      ),
-      childWhenDragging: Opacity(opacity: 0.4, child: child),
-      onDragEnd: (details) {
-        // Handle drop position via drag target
-      },
-      child: DragTarget<int>(
-        onAcceptWithDetails: (details) {
-          final draggedIndex = details.data;
-          final targetIndex = index;
-          if (draggedIndex != targetIndex) {
-            setState(() {
-              final moved = _children.removeAt(draggedIndex);
-              _children.insert(targetIndex, moved);
-            });
-            widget.onReorder(draggedIndex, targetIndex);
-          }
-        },
-        builder: (context, candidateData, rejectedData) => child,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.builder(_children, _buildHandle);
   }
 }
